@@ -1,5 +1,7 @@
 # use-wallet UI
 
+> **Note:** This project was originally developed at the [Algorand Developer Retreat](https://github.com/Algorand-Developer-Retreat/use-wallet-ui) and has been migrated to TxnLab for ongoing maintenance. The original repository has been archived.
+
 Ready-to-use UI components for Algorand wallet integration, built as a companion to [@txnlab/use-wallet](https://github.com/TxnLab/use-wallet).
 
 [![npm version](https://img.shields.io/npm/v/@txnlab/use-wallet-ui-react.svg)](https://www.npmjs.com/package/@txnlab/use-wallet-ui-react)

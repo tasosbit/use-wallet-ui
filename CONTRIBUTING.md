@@ -161,6 +161,6 @@ If the commit reverts a previous commit, it should begin with `revert: `, follow
 
 ## Documentation
 
-Documentation is available in the repository README and code comments. For documentation issues and feature requests, please [open an issue](https://github.com/Algorand-Developer-Retreat/use-wallet-ui/issues/new).
+Documentation is available in the repository README and code comments. For documentation issues and feature requests, please [open an issue](https://github.com/TxnLab/use-wallet-ui/issues/new).
 
 Thank you for contributing to `@txnlab/use-wallet-ui`!

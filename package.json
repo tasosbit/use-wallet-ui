@@ -25,12 +25,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Algorand-Developer-Retreat/use-wallet-ui.git"
+    "url": "git+https://github.com/TxnLab/use-wallet-ui.git"
   },
   "bugs": {
-    "url": "https://github.com/Algorand-Developer-Retreat/use-wallet-ui/issues"
+    "url": "https://github.com/TxnLab/use-wallet-ui/issues"
   },
-  "homepage": "https://github.com/Algorand-Developer-Retreat/use-wallet-ui#readme",
+  "homepage": "https://github.com/TxnLab/use-wallet-ui#readme",
   "engines": {
     "node": ">=22",
     "pnpm": ">=9"

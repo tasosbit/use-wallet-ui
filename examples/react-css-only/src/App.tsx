@@ -64,7 +64,7 @@ function App() {
               <p className="footer-text">
                 View the{' '}
                 <a
-                  href="https://github.com/Algorand-Developer-Retreat/use-wallet-ui"
+                  href="https://github.com/TxnLab/use-wallet-ui"
                   className="documentation-link"
                   target="_blank"
                   rel="noopener noreferrer"

@@ -65,7 +65,7 @@ function App() {
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 View the{' '}
                 <a
-                  href="https://github.com/Algorand-Developer-Retreat/use-wallet-ui"
+                  href="https://github.com/TxnLab/use-wallet-ui"
                   className="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300"
                   target="_blank"
                   rel="noopener noreferrer"

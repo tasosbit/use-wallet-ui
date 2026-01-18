@@ -56,8 +56,7 @@
       "automergeStrategy": "squash"
     },
     {
-      "description": "Pin Node.js version in GitHub Actions to 22.x",
-      "matchManagers": ["github-actions"],
+      "description": "Pin Node.js to 22.x (LTS)",
       "matchPackageNames": ["node"],
       "allowedVersions": "22.x"
     },

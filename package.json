@@ -7,10 +7,15 @@
     "build": "pnpm --filter @txnlab/use-wallet-ui-react build",
     "build:examples": "pnpm --filter @txnlab/use-wallet-ui-react-example build",
     "test": "pnpm -r test",
+    "test:e2e": "pnpm --filter @txnlab/use-wallet-ui-e2e e2e",
+    "test:e2e:ui": "pnpm --filter @txnlab/use-wallet-ui-e2e e2e:ui",
+    "test:e2e:headed": "pnpm --filter @txnlab/use-wallet-ui-e2e e2e:headed",
+    "test:e2e:update": "pnpm --filter @txnlab/use-wallet-ui-e2e e2e:update",
+    "test:e2e:update:docker": "pnpm --filter @txnlab/use-wallet-ui-e2e e2e:update:docker",
     "lint": "pnpm -r lint",
     "format": "pnpm -r format",
-    "typecheck": "pnpm --filter @txnlab/use-wallet-ui-react typecheck",
-    "fresh-install": "rm -rf node_modules packages/*/node_modules examples/*/node_modules && pnpm install"
+    "typecheck": "pnpm -r typecheck",
+    "fresh-install": "rm -rf node_modules packages/*/node_modules examples/*/node_modules e2e/node_modules && pnpm install"
   },
   "keywords": [
     "algorand",

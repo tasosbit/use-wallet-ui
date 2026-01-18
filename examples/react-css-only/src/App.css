@@ -62,6 +62,27 @@ body {
   color: #1f2937;
 }
 
+.wallet-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.theme-select {
+  font-size: 0.875rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  border: 1px solid #d1d5db;
+  background-color: white;
+  color: #1f2937;
+}
+
+.theme-info {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-top: 1rem;
+}
+
 /* Main Content */
 .main-content {
   flex: 1;
@@ -337,6 +358,16 @@ body {
 
   .logo-text {
     color: #ffffff;
+  }
+
+  .theme-select {
+    background-color: #1f2937;
+    border-color: #4b5563;
+    color: #ffffff;
+  }
+
+  .theme-info {
+    color: #9ca3af;
   }
 
   /* Content */

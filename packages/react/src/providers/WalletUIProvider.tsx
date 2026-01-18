@@ -13,10 +13,89 @@ import {
   useRef,
 } from 'react'
 
+import {
+  useResolvedTheme,
+  type Theme,
+  type ResolvedTheme,
+} from '../hooks/useResolvedTheme'
+
 import type { NfdLookupResponse, NfdView } from '../hooks/useNfd'
+
+// CSS custom properties for theming - injected via JavaScript to avoid requiring CSS imports
+const THEME_STYLES_ID = 'wallet-ui-theme-styles'
+
+const lightThemeVars = `
+  --wui-color-primary: #2d2df1;
+  --wui-color-primary-hover: #2929d9;
+  --wui-color-primary-text: #ffffff;
+  --wui-color-bg: #ffffff;
+  --wui-color-bg-secondary: #f9fafb;
+  --wui-color-bg-tertiary: #f3f4f6;
+  --wui-color-bg-hover: #e9e9fd;
+  --wui-color-text: #1f2937;
+  --wui-color-text-secondary: #6b7280;
+  --wui-color-text-tertiary: #9ca3af;
+  --wui-color-border: #e5e7eb;
+  --wui-color-link: rgba(45, 45, 241, 0.8);
+  --wui-color-link-hover: #2d2df1;
+  --wui-color-overlay: rgba(0, 0, 0, 0.3);
+`
+
+const darkThemeVars = `
+  --wui-color-primary: #bfbff9;
+  --wui-color-primary-hover: #d4d4fa;
+  --wui-color-primary-text: #001324;
+  --wui-color-bg: #001324;
+  --wui-color-bg-secondary: #101b29;
+  --wui-color-bg-tertiary: #192a39;
+  --wui-color-bg-hover: #192a39;
+  --wui-color-text: #e9e9fd;
+  --wui-color-text-secondary: #99a1a7;
+  --wui-color-text-tertiary: #6b7280;
+  --wui-color-border: #192a39;
+  --wui-color-link: #6c6cf1;
+  --wui-color-link-hover: #8080f3;
+  --wui-color-overlay: rgba(0, 0, 0, 0.5);
+`
+
+function injectThemeStyles() {
+  // Only inject once
+  if (document.getElementById(THEME_STYLES_ID)) {
+    return
+  }
+
+  const styleElement = document.createElement('style')
+  styleElement.id = THEME_STYLES_ID
+  styleElement.textContent = `
+    /* Light mode (default) */
+    [data-wallet-ui] {
+      ${lightThemeVars}
+    }
+
+    /* Dark mode via data-theme attribute (explicit) */
+    [data-wallet-ui][data-theme='dark'] {
+      ${darkThemeVars}
+    }
+
+    /* Dark mode via .dark class on ancestor (Tailwind convention) */
+    .dark [data-wallet-ui]:not([data-theme='light']) {
+      ${darkThemeVars}
+    }
+
+    /* Dark mode via system preference (when theme="system" or no explicit theme) */
+    @media (prefers-color-scheme: dark) {
+      [data-wallet-ui]:not([data-theme='light']):not([data-theme='dark']) {
+        ${darkThemeVars}
+      }
+    }
+  `
+  document.head.appendChild(styleElement)
+}
 
 interface WalletUIContextType {
   queryClient: QueryClient
+  theme: Theme
+  resolvedTheme: ResolvedTheme
 }
 
 interface WalletUIProviderProps {
@@ -30,6 +109,16 @@ interface WalletUIProviderProps {
    * NFD view type for prefetching (defaults to 'thumbnail')
    */
   prefetchNfdView?: NfdView
+  /**
+   * Theme setting for wallet UI components.
+   * - 'light': Always use light mode
+   * - 'dark': Always use dark mode
+   * - 'system': Follow the user's OS/browser preference (default)
+   *
+   * The library also respects the `.dark` class on ancestor elements (Tailwind convention),
+   * which will enable dark mode unless explicitly overridden with theme="light".
+   */
+  theme?: Theme
 }
 
 // Default query client configuration for NFD queries
@@ -207,12 +296,18 @@ function WalletAccountsPrefetcher({
  *
  * Automatically prefetches data for all accounts in connected wallets for smoother
  * account switching experience.
+ *
+ * Supports theme configuration via the `theme` prop:
+ * - 'light': Always use light mode
+ * - 'dark': Always use dark mode
+ * - 'system': Follow the user's OS/browser preference (default)
  */
 export function WalletUIProvider({
   children,
   queryClient: externalQueryClient,
   enablePrefetching = true,
   prefetchNfdView = 'thumbnail',
+  theme = 'system',
 }: WalletUIProviderProps) {
   // Use provided query client or create a default one
   const queryClient = useMemo(
@@ -220,21 +315,38 @@ export function WalletUIProvider({
     [externalQueryClient],
   )
 
+  // Resolve the theme (handles 'system' preference detection)
+  const resolvedTheme = useResolvedTheme(theme)
+
+  // Inject theme CSS variables on mount
+  useEffect(() => {
+    injectThemeStyles()
+  }, [])
+
   const contextValue = useMemo(
     () => ({
       queryClient,
+      theme,
+      resolvedTheme,
     }),
-    [queryClient],
+    [queryClient, theme, resolvedTheme],
   )
+
+  // Determine the data-theme attribute value
+  // - For explicit 'light' or 'dark', set the attribute to enable CSS variable overrides
+  // - For 'system', don't set the attribute so CSS media queries handle it
+  const dataTheme = theme === 'system' ? undefined : theme
 
   const content = (
     <WalletUIContext.Provider value={contextValue}>
-      {/* Internal prefetcher component that runs automatically */}
-      <WalletAccountsPrefetcher
-        enabled={enablePrefetching}
-        nfdView={prefetchNfdView}
-      />
-      {children}
+      <div data-wallet-ui data-theme={dataTheme}>
+        {/* Internal prefetcher component that runs automatically */}
+        <WalletAccountsPrefetcher
+          enabled={enablePrefetching}
+          nfdView={prefetchNfdView}
+        />
+        {children}
+      </div>
     </WalletUIContext.Provider>
   )
 

@@ -18,10 +18,12 @@
       }
     },
     "./dist/style.css": "./dist/style.css",
+    "./theme.css": "./src/theme.css",
     "./package.json": "./package.json"
   },
   "files": [
     "dist",
+    "src/theme.css",
     "README.md"
   ],
   "keywords": [

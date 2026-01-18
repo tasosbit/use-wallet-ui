@@ -4,7 +4,12 @@ import {
   WalletManager,
   WalletProvider,
 } from '@txnlab/use-wallet-react'
-import { WalletButton, WalletUIProvider } from '@txnlab/use-wallet-ui-react'
+import {
+  WalletButton,
+  WalletUIProvider,
+  type Theme,
+} from '@txnlab/use-wallet-ui-react'
+import { useState } from 'react'
 
 import { WalletInfo } from './components/WalletInfo'
 
@@ -26,9 +31,11 @@ const walletManager = new WalletManager({
 })
 
 function App() {
+  const [theme, setTheme] = useState<Theme>('system')
+
   return (
     <WalletProvider manager={walletManager}>
-      <WalletUIProvider>
+      <WalletUIProvider theme={theme}>
         <div className="app-wrapper">
           {/* Header */}
           <header className="header">
@@ -37,7 +44,17 @@ function App() {
                 <div className="logo-container">
                   <span className="logo-text">use-wallet-ui</span>
                 </div>
-                <div data-wallet-ui className="wallet-button-container">
+                <div className="wallet-controls">
+                  {/* Theme selector */}
+                  <select
+                    value={theme}
+                    onChange={(e) => setTheme(e.target.value as Theme)}
+                    className="theme-select"
+                  >
+                    <option value="system">System</option>
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+                  </select>
                   <WalletButton />
                 </div>
               </div>
@@ -53,6 +70,9 @@ function App() {
                 integration, and balance display using the{' '}
                 <code className="code-block">@txnlab/use-wallet-ui-react</code>{' '}
                 package.
+              </p>
+              <p className="theme-info">
+                Current theme: <code className="code-block">{theme}</code>
               </p>
             </div>
 

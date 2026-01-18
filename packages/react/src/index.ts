@@ -12,6 +12,8 @@ export { NfdAvatar } from './components/NfdAvatar'
 export { useNfd } from './hooks/useNfd'
 export type { NfdRecord, NfdLookupResponse } from './hooks/useNfd'
 export { useAccountInfo } from './hooks/useAccountInfo'
+export { useResolvedTheme } from './hooks/useResolvedTheme'
+export type { Theme, ResolvedTheme } from './hooks/useResolvedTheme'
 
 // Providers
 export { WalletUIProvider, useWalletUI } from './providers/WalletUIProvider'

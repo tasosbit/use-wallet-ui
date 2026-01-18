@@ -23,8 +23,9 @@ export const ConnectedWalletButton = React.forwardRef<
   const nfdName = nfdQuery.data?.name ?? null
 
   // Style for the connected button to match ConnectWalletButton height exactly
+  // Uses CSS custom properties for theming
   const connectedButtonStyles =
-    'flex items-center py-2.5 pl-3 md:pl-3.5 pr-3 bg-[#2D2DF1] dark:bg-[#BFBFF9] text-white dark:text-[#001324] rounded-xl cursor-pointer font-bold'
+    'flex items-center py-2.5 pl-3 md:pl-3.5 pr-3 bg-[var(--wui-color-primary)] text-[var(--wui-color-primary-text)] rounded-xl cursor-pointer font-bold'
 
   return (
     <button

@@ -105,6 +105,7 @@ That's it! You now have a fully functional wallet connection system with:
 - [Styling Options](#styling-options)
   - [Without Tailwind CSS](#without-tailwind-css)
   - [With Tailwind CSS](#with-tailwind-css)
+- [Theming](#theming)
 - [Basic Usage](#basic-usage)
 - [Component API](#component-api)
 - [NFD Integration](#nfd-integration)
@@ -205,6 +206,83 @@ function App() {
 
 While this approach offers less flexibility for customization compared to Tailwind, it provides a simple way to use the components with minimal setup.
 
+## Theming
+
+The library supports light and dark modes out of the box. You can control the theme using the `theme` prop on `WalletUIProvider`.
+
+### Theme Options
+
+```jsx
+<WalletUIProvider theme="system">  {/* Default: follows OS/browser preference */}
+  {/* ... */}
+</WalletUIProvider>
+
+<WalletUIProvider theme="light">  {/* Always use light mode */}
+  {/* ... */}
+</WalletUIProvider>
+
+<WalletUIProvider theme="dark">   {/* Always use dark mode */}
+  {/* ... */}
+</WalletUIProvider>
+```
+
+### How Theming Works
+
+The library uses CSS custom properties for colors, which are automatically applied based on the theme setting:
+
+1. **`theme="system"` (default)**: The library respects the user's OS/browser preference via the `prefers-color-scheme` media query.
+
+2. **`theme="light"` or `theme="dark"`**: Explicitly sets the theme regardless of system preference.
+
+3. **Tailwind `.dark` class**: The library also respects the `.dark` class on ancestor elements (common Tailwind convention). If a `.dark` class is present on an ancestor, dark mode will be used unless explicitly overridden with `theme="light"`.
+
+### Accessing Theme in Your App
+
+You can access the current theme state using the `useWalletUI` hook:
+
+```jsx
+import { useWalletUI } from '@txnlab/use-wallet-ui-react'
+
+function MyComponent() {
+  const { theme, resolvedTheme } = useWalletUI()
+
+  // theme: 'light' | 'dark' | 'system' (the prop value)
+  // resolvedTheme: 'light' | 'dark' (the actual applied theme)
+
+  return <div>Current theme: {resolvedTheme}</div>
+}
+```
+
+### Custom Theme Colors
+
+The library uses CSS custom properties that you can override in your own CSS to customize the color scheme:
+
+```css
+/* Override theme colors */
+[data-wallet-ui] {
+  --wui-color-primary: #your-primary-color;
+  --wui-color-primary-hover: #your-primary-hover;
+  --wui-color-primary-text: #your-primary-text;
+  --wui-color-bg: #your-background;
+  --wui-color-bg-secondary: #your-secondary-bg;
+  --wui-color-bg-tertiary: #your-tertiary-bg;
+  --wui-color-bg-hover: #your-hover-bg;
+  --wui-color-text: #your-text-color;
+  --wui-color-text-secondary: #your-secondary-text;
+  --wui-color-text-tertiary: #your-tertiary-text;
+  --wui-color-border: #your-border-color;
+  --wui-color-link: #your-link-color;
+  --wui-color-link-hover: #your-link-hover;
+  --wui-color-overlay: rgba(0, 0, 0, 0.3);
+}
+
+/* Override dark mode colors */
+[data-wallet-ui][data-theme='dark'] {
+  --wui-color-primary: #your-dark-primary;
+  /* ... other dark mode overrides */
+}
+```
+
 ## Basic Usage
 
 This library builds on top of `@txnlab/use-wallet-react` to provide UI components for wallet connectivity. Here's the basic setup:
@@ -278,11 +356,12 @@ The library provides several components that can be used independently or togeth
 
 ### WalletUIProvider
 
-Required wrapper that enables NFD lookups and data prefetching:
+Required wrapper that enables NFD lookups, data prefetching, and theming:
 
 ```jsx
 <WalletUIProvider
   // Optional configurations
+  theme="system" // Theme setting: 'light' | 'dark' | 'system' (default: 'system')
   enablePrefetching={false} // Prefetch data for all accounts in a wallet (default: true)
   prefetchNfdView="brief" // Data view for NFD prefetching (default: 'thumbnail')
   queryClient={yourQueryClient} // Optional: integrate with existing Tanstack Query

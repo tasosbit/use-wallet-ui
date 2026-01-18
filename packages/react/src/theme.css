@@ -1,15 +1,6 @@
-@import 'tailwindcss/theme.css';
+/* Theme CSS custom properties for wallet UI components */
+/* Import this file in Tailwind projects to enable theming */
 
-[data-wallet-ui] {
-  /*
-			Wrap components in a div with the data-wallet-ui attribute
-			to prevent style conflicts with the application's existing styles.
-			See: https://github.com/Roman86/tailwindcss-scoped-preflight/issues/67
-		*/
-  @import 'tailwindcss/preflight.css';
-}
-
-/* Theme CSS custom properties */
 /* Light mode (default) */
 [data-wallet-ui] {
   --wui-color-primary: #2d2df1;
@@ -83,15 +74,3 @@
     --wui-color-overlay: rgba(0, 0, 0, 0.5);
   }
 }
-
-[data-wallet-ui-reset] {
-  *,
-  ::after,
-  ::before,
-  ::backdrop,
-  ::file-selector-button {
-    all: revert-layer;
-  }
-}
-
-@import 'tailwindcss/utilities.css';

@@ -11,9 +11,9 @@ export const ConnectWalletButton = React.forwardRef<
   HTMLButtonElement,
   ConnectWalletButtonProps
 >(({ className = '', children, style, ...props }, ref) => {
-  // Style for the connect button
+  // Style for the connect button using CSS custom properties for theming
   const connectButtonStyles =
-    'bg-[#2D2DF1] dark:bg-[#BFBFF9] transition-colors hover:bg-[#2929D9] dark:hover:bg-[#D4D4FA] text-white dark:text-[#001324] font-bold py-2.5 px-4 rounded-xl cursor-pointer disabled:opacity-50 wallet-custom-font'
+    'bg-[var(--wui-color-primary)] transition-colors hover:bg-[var(--wui-color-primary-hover)] text-[var(--wui-color-primary-text)] font-bold py-2.5 px-4 rounded-xl cursor-pointer disabled:opacity-50 wallet-custom-font'
 
   return (
     <button

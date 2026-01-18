@@ -4,7 +4,12 @@ import {
   WalletManager,
   WalletProvider,
 } from '@txnlab/use-wallet-react'
-import { WalletUIProvider, WalletButton } from '@txnlab/use-wallet-ui-react'
+import {
+  WalletUIProvider,
+  WalletButton,
+  type Theme,
+} from '@txnlab/use-wallet-ui-react'
+import { useState } from 'react'
 
 import { WalletInfo } from './components/WalletInfo'
 
@@ -23,9 +28,11 @@ const walletManager = new WalletManager({
 })
 
 function App() {
+  const [theme, setTheme] = useState<Theme>('system')
+
   return (
     <WalletProvider manager={walletManager}>
-      <WalletUIProvider>
+      <WalletUIProvider theme={theme}>
         <div className="min-h-screen bg-gray-50 dark:bg-[#001324]">
           {/* Header */}
           <header className="w-full bg-white dark:bg-gray-800/30 border-b border-gray-200 dark:border-gray-700/50">
@@ -36,7 +43,17 @@ function App() {
                     use-wallet-ui
                   </span>
                 </div>
-                <div>
+                <div className="flex items-center gap-4">
+                  {/* Theme selector */}
+                  <select
+                    value={theme}
+                    onChange={(e) => setTheme(e.target.value as Theme)}
+                    className="text-sm px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-white"
+                  >
+                    <option value="system">System</option>
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+                  </select>
                   <WalletButton />
                 </div>
               </div>
@@ -56,6 +73,12 @@ function App() {
                   @txnlab/use-wallet-ui-react
                 </code>{' '}
                 package.
+              </p>
+              <p className="text-gray-500 dark:text-gray-400 text-sm mt-4">
+                Current theme:{' '}
+                <code className="bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">
+                  {theme}
+                </code>
               </p>
             </div>
 

@@ -1,3 +1,10 @@
+## [0.4.1](https://github.com/TxnLab/use-wallet-ui/compare/v0.4.0...v0.4.1) (2026-01-19)
+
+
+### Bug Fixes
+
+* **css:** scope preflight/reset styles to wallet UI containers only ([#15](https://github.com/TxnLab/use-wallet-ui/issues/15)) ([75eb934](https://github.com/TxnLab/use-wallet-ui/commit/75eb9347d03ba1022aec28509e90dcb72c8aff05))
+
 # [0.4.0](https://github.com/TxnLab/use-wallet-ui/compare/v0.3.1...v0.4.0) (2026-01-18)
 
 

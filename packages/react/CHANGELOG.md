@@ -1,3 +1,10 @@
+## [0.4.2](https://github.com/TxnLab/use-wallet-ui/compare/v0.4.1...v0.4.2) (2026-01-19)
+
+
+### Bug Fixes
+
+* **theme:** use CSS custom properties for portal-rendered components ([#22](https://github.com/TxnLab/use-wallet-ui/issues/22)) ([f13f7e0](https://github.com/TxnLab/use-wallet-ui/commit/f13f7e072c2f4e43f963d5477e73849d31471dbc))
+
 ## [0.4.1](https://github.com/TxnLab/use-wallet-ui/compare/v0.4.0...v0.4.1) (2026-01-19)
 
 

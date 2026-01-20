@@ -83,6 +83,7 @@ export function NfdAvatar({
     // Default fallback is a rounded placeholder with light/dark mode variants
     return (
       <div
+        data-wallet-ui
         className={cn('flex items-center justify-center rounded-full', className)}
         style={{
           width: `${size}px`,

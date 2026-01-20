@@ -6,14 +6,14 @@
   Consumer CSS (unlayered) automatically beats layered styles.
 
   Example override:
-    [data-wallet-ui] {
+    [data-wallet-theme] {
       --wui-color-primary: #8b5cf6;
     }
 */
 
 @layer wui-theme {
   /* Light mode (default) */
-  [data-wallet-ui] {
+  [data-wallet-theme] {
     --wui-color-primary: #2d2df1;
     --wui-color-primary-hover: #2929d9;
     --wui-color-primary-text: #ffffff;
@@ -36,7 +36,7 @@
   }
 
   /* Dark mode via data-theme attribute (explicit) */
-  [data-wallet-ui][data-theme='dark'] {
+  [data-wallet-theme][data-theme='dark'] {
     --wui-color-primary: #bfbff9;
     --wui-color-primary-hover: #d4d4fa;
     --wui-color-primary-text: #001324;
@@ -59,7 +59,7 @@
   }
 
   /* Dark mode via .dark class on ancestor (Tailwind convention) */
-  .dark [data-wallet-ui]:not([data-theme='light']) {
+  .dark [data-wallet-theme]:not([data-theme='light']) {
     --wui-color-primary: #bfbff9;
     --wui-color-primary-hover: #d4d4fa;
     --wui-color-primary-text: #001324;
@@ -83,7 +83,7 @@
 
   /* Dark mode via system preference (when theme="system" or no explicit theme) */
   @media (prefers-color-scheme: dark) {
-    [data-wallet-ui]:not([data-theme='light']):not([data-theme='dark']) {
+    [data-wallet-theme]:not([data-theme='light']):not([data-theme='dark']) {
       --wui-color-primary: #bfbff9;
       --wui-color-primary-hover: #d4d4fa;
       --wui-color-primary-text: #001324;

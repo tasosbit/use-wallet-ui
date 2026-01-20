@@ -50,7 +50,7 @@ export type Theme = 'system' | 'light' | 'dark'
 export interface ThemeTestFixtures {
   /** Select a theme from the dropdown */
   selectTheme: (theme: Theme) => Promise<void>
-  /** Get a computed CSS variable value from the [data-wallet-ui] element */
+  /** Get a computed CSS variable value from the [data-wallet-theme] element */
   getComputedCSSVariable: (variable: string) => Promise<string>
   /** Wait for theme transition to complete */
   waitForThemeStable: () => Promise<void>
@@ -61,12 +61,12 @@ export interface ThemeTestFixtures {
 }
 
 /**
- * Get a computed CSS variable value from the [data-wallet-ui] element
+ * Get a computed CSS variable value from the [data-wallet-theme] element
  */
 async function getCSSVariable(page: Page, variable: string): Promise<string> {
   return page.evaluate((varName) => {
-    const el = document.querySelector('[data-wallet-ui]')
-    if (!el) throw new Error('Could not find [data-wallet-ui] element')
+    const el = document.querySelector('[data-wallet-theme]')
+    if (!el) throw new Error('Could not find [data-wallet-theme] element')
     return getComputedStyle(el).getPropertyValue(varName).trim()
   }, variable)
 }
@@ -99,7 +99,7 @@ export const test = base.extend<ThemeTestFixtures>({
       await page
         .waitForFunction(
           () => {
-            const elements = document.querySelectorAll('[data-wallet-ui] *')
+            const elements = document.querySelectorAll('[data-wallet-theme] *')
             return Array.from(elements).every((el) => {
               const style = getComputedStyle(el)
               return (

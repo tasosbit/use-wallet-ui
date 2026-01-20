@@ -5,7 +5,7 @@ import { test, expect } from '@playwright/test'
 test.describe('Visual Regression - Dark Mode', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
-    await page.waitForSelector('[data-wallet-ui]')
+    await page.waitForSelector('[data-wallet-theme]')
     await page.locator('select').selectOption('dark')
     // Wait for fonts and images to load
     await page.waitForLoadState('networkidle')

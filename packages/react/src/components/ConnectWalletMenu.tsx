@@ -127,7 +127,7 @@ export function ConnectWalletMenu({ children }: ConnectWalletMenuProps) {
       {trigger}
       <FloatingPortal id="wallet-dialog-portal">
         {isOpen && (
-          <div data-wallet-ui data-theme={dataTheme}>
+          <div data-wallet-theme data-wallet-ui data-theme={dataTheme}>
             <FloatingOverlay
               className="grid place-items-center px-4 z-50 transition-opacity duration-150 ease-in-out bg-[var(--wui-color-overlay)] data-[state=starting]:opacity-0 data-[state=exiting]:opacity-0 data-[state=entered]:opacity-100"
               data-state={animationState}

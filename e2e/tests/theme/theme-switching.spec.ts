@@ -3,7 +3,7 @@ import { test, expect } from '../../fixtures/theme'
 test.describe('Theme Switching', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
-    await page.waitForSelector('[data-wallet-ui]')
+    await page.waitForSelector('[data-wallet-theme]')
   })
 
   test('should switch from light to dark', async ({

@@ -3,9 +3,16 @@
  * Post-processes the generated Tailwind CSS file to ensure utility classes
  * are scoped to wallet UI components.
  *
- * This script adds [data-wallet-ui] prefix to CSS class selectors to scope
- * them to wallet UI components. This ensures styles only apply within the
- * WalletUIProvider wrapper and don't leak to the consumer's application.
+ * This script adds [data-wallet-ui] scoping to CSS class selectors. It generates
+ * two selector patterns for each utility class:
+ *
+ * 1. [data-wallet-ui].class - for elements that have the attribute directly (buttons)
+ * 2. [data-wallet-ui] .class - for descendants of elements with the attribute (portal content)
+ *
+ * This approach allows:
+ * - Buttons with data-wallet-ui to receive utility classes directly
+ * - Portal wrappers with data-wallet-ui to scope utility classes to their children
+ * - No utility class leakage to consumer app elements
  *
  * With CSS @layer, consumer CSS (unlayered) automatically beats the layered
  * library CSS, enabling easy customization without !important.
@@ -22,6 +29,7 @@ function isTopLevelClassSelector(line) {
   // Skip existing prefixed lines, theme selectors, at-rules, and comments
   if (
     line.includes('[data-wallet-ui]') ||
+    line.includes('[data-wallet-theme]') ||
     trimmed.startsWith('@') ||
     trimmed.startsWith('/*') ||
     trimmed.startsWith('*')
@@ -41,7 +49,18 @@ async function main() {
     // Process each line
     const processedLines = lines.map((line) => {
       if (isTopLevelClassSelector(line)) {
-        // Replace the first occurrence of a period with '[data-wallet-ui] .'
+        // Extract the leading whitespace and the selector
+        const match = line.match(/^(\s*)(\.[^\{]+)\{(.*)$/)
+        if (match) {
+          const [, indent, selector, rest] = match
+          // Trim the selector to remove trailing spaces before the opening brace
+          const trimmedSelector = selector.trim()
+          // Generate both patterns:
+          // 1. [data-wallet-ui].class - element has attribute directly
+          // 2. [data-wallet-ui] .class - element is descendant
+          return `${indent}[data-wallet-ui]${trimmedSelector}, [data-wallet-ui] ${trimmedSelector} {${rest}`
+        }
+        // Fallback to original behavior if regex doesn't match
         return line.replace(/(\s*)\./, '$1[data-wallet-ui] .')
       }
       return line

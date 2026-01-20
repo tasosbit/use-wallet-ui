@@ -5,7 +5,7 @@ import { test, expect } from '@playwright/test'
 test.describe('Visual Regression - Light Mode', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
-    await page.waitForSelector('[data-wallet-ui]')
+    await page.waitForSelector('[data-wallet-theme]')
     await page.locator('select').selectOption('light')
     // Wait for fonts and images to load
     await page.waitForLoadState('networkidle')

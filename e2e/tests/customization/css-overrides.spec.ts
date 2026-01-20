@@ -10,7 +10,7 @@ import { test, expect } from '@playwright/test'
 test.describe('CSS Customization Patterns', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
-    await page.waitForSelector('[data-wallet-ui]')
+    await page.waitForSelector('[data-wallet-theme]')
   })
 
   test('page loads with all customization examples', async ({ page }) => {
@@ -126,7 +126,7 @@ test.describe('CSS Customization Patterns', () => {
 test.describe('Theme Switching', () => {
   test('amber theme changes color on dark mode toggle', async ({ page }) => {
     await page.goto('/')
-    await page.waitForSelector('[data-wallet-ui]')
+    await page.waitForSelector('[data-wallet-theme]')
 
     const amberSection = page.locator('section').filter({ hasText: '6. Theme-Aware Customization' })
     const button = amberSection.locator('[data-wallet-button]')

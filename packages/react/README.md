@@ -133,7 +133,7 @@ Theme colors are CSS custom properties that can be overridden globally or per-in
 **Global override (in your CSS):**
 
 ```css
-[data-wallet-ui] {
+[data-wallet-theme] {
   --wui-color-primary: #8b5cf6;
   --wui-color-primary-hover: #7c3aed;
   --wui-color-primary-text: #ffffff;
@@ -516,7 +516,7 @@ v1.0 introduces a redesigned CSS architecture. Here's what changed:
 ### Breaking Changes
 
 1. **CSS Variable Prefix**: Variables now use `--wui-` prefix (previously undocumented)
-2. **Theme Variables Location**: Defined on `[data-wallet-ui]` element
+2. **Theme Variables Location**: Defined on `[data-wallet-theme]` element (for CSS variable inheritance)
 3. **Button Data Attribute**: Buttons now have `data-wallet-button` attribute for targeting
 
 ### New Features
@@ -527,7 +527,7 @@ v1.0 introduces a redesigned CSS architecture. Here's what changed:
 
 3. **CSS Variable Overrides**: Override any theme color via CSS:
    ```css
-   [data-wallet-ui] {
+   [data-wallet-theme] {
      --wui-color-primary: #your-color;
    }
    ```
@@ -543,7 +543,9 @@ v1.0 introduces a redesigned CSS architecture. Here's what changed:
 
 ### Migration Steps
 
-1. Update any custom CSS targeting the library to use the new `[data-wallet-ui]` selector and `--wui-*` variables
+1. Update any custom CSS targeting the library:
+   - Use `[data-wallet-theme]` for CSS variable overrides
+   - Use `[data-wallet-button]` for targeting button elements
 
 2. If you were using workarounds for customization, you can likely simplify using the new APIs
 

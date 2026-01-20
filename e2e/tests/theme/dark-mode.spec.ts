@@ -3,7 +3,7 @@ import { test, expect, DARK_THEME_COLORS } from '../../fixtures/theme'
 test.describe('Dark Mode Theme', () => {
   test.beforeEach(async ({ page, selectTheme, waitForThemeStable }) => {
     await page.goto('/')
-    await page.waitForSelector('[data-wallet-ui]')
+    await page.waitForSelector('[data-wallet-theme]')
     await selectTheme('dark')
     await waitForThemeStable()
   })
@@ -27,7 +27,7 @@ test.describe('Dark Mode Theme', () => {
 
   test('should set data-theme attribute to dark', async ({ page }) => {
     const dataTheme = await page
-      .locator('[data-wallet-ui]')
+      .locator('[data-wallet-theme]')
       .getAttribute('data-theme')
     expect(dataTheme).toBe('dark')
   })

@@ -6,7 +6,7 @@ test.describe('Portal-Critical CSS Variables', () => {
   test.describe('Light Mode', () => {
     test.beforeEach(async ({ page, selectTheme, waitForThemeStable }) => {
       await page.goto('/')
-      await page.waitForSelector('[data-wallet-ui]')
+      await page.waitForSelector('[data-wallet-theme]')
       await selectTheme('light')
       await waitForThemeStable()
     })
@@ -41,8 +41,8 @@ test.describe('Portal-Critical CSS Variables', () => {
       await page.waitForTimeout(300)
 
       // Get CSS variables from the portal-rendered element
-      // The portal wraps content in a div with data-wallet-ui attribute
-      const portalElement = page.locator('#wallet-dialog-portal [data-wallet-ui]')
+      // The portal wraps content in a div with data-wallet-theme attribute
+      const portalElement = page.locator('#wallet-dialog-portal [data-wallet-theme]')
 
       const bgColor = await portalElement.evaluate((el) => {
         return getComputedStyle(el).getPropertyValue('--wui-color-bg').trim()
@@ -59,7 +59,7 @@ test.describe('Portal-Critical CSS Variables', () => {
   test.describe('Dark Mode', () => {
     test.beforeEach(async ({ page, selectTheme, waitForThemeStable }) => {
       await page.goto('/')
-      await page.waitForSelector('[data-wallet-ui]')
+      await page.waitForSelector('[data-wallet-theme]')
       await selectTheme('dark')
       await waitForThemeStable()
     })
@@ -94,8 +94,8 @@ test.describe('Portal-Critical CSS Variables', () => {
       await page.waitForTimeout(300)
 
       // Get CSS variables from the portal-rendered element
-      // The portal wraps content in a div with data-wallet-ui attribute
-      const portalElement = page.locator('#wallet-dialog-portal [data-wallet-ui]')
+      // The portal wraps content in a div with data-wallet-theme attribute
+      const portalElement = page.locator('#wallet-dialog-portal [data-wallet-theme]')
 
       const bgColor = await portalElement.evaluate((el) => {
         return getComputedStyle(el).getPropertyValue('--wui-color-bg').trim()

@@ -1,14 +1,17 @@
 /*
   CSS Architecture for use-wallet-ui
 
-  All styles are scoped to [data-wallet-ui] to:
-  1. Prevent library styles from leaking into consumer apps
-  2. Provide enough specificity to override consumer CSS resets (e.g., * { margin: 0 })
-  3. Enable easy customization via [data-wallet-ui] selector overrides
+  Two scoping attributes are used:
+  - [data-wallet-theme]: Provider-level wrapper for CSS variable definitions
+  - [data-wallet-ui]: Component-level attribute for utility class scoping and CSS resets
+
+  This separation allows:
+  1. CSS variables to inherit from provider to all descendants
+  2. Consumers to override variables via ancestor selectors (same specificity, load order wins)
+  3. Utility classes to only affect library components, not consumer app elements
 
   Note: We use a minimal reset that only targets library component elements,
-  NOT Tailwind's full preflight, to avoid affecting consumer app elements
-  that may be inside the WalletUIProvider wrapper.
+  NOT Tailwind's full preflight, to avoid affecting consumer app elements.
 */
 
 @import 'tailwindcss/theme.css';
@@ -21,7 +24,7 @@
   Note: We use [data-wallet-button] to target only the library's buttons,
   not custom trigger buttons that consumers may pass as children.
 */
-[data-wallet-ui] [data-wallet-button],
+[data-wallet-ui][data-wallet-button],
 [data-wallet-ui] [role="dialog"],
 [data-wallet-ui] [role="menu"],
 [data-wallet-ui] [role="listbox"] {
@@ -35,7 +38,7 @@
 
 /* Button-specific reset - for library buttons and buttons inside dialogs/menus */
 /* Uses :where() to reduce specificity, allowing utility classes to override */
-[data-wallet-ui] :where([data-wallet-button]),
+[data-wallet-ui]:where([data-wallet-button]),
 [data-wallet-ui] :where([role="dialog"]) button,
 [data-wallet-ui] :where([role="menu"]) button,
 [data-wallet-ui] :where([role="listbox"]) button {
@@ -70,7 +73,7 @@
 /* Theme - CSS custom properties */
 
 /* Light mode (default) */
-[data-wallet-ui] {
+[data-wallet-theme] {
   --wui-color-primary: #2d2df1;
   --wui-color-primary-hover: #2929d9;
   --wui-color-primary-text: #ffffff;
@@ -93,7 +96,7 @@
 }
 
 /* Dark mode via data-theme attribute (explicit) */
-[data-wallet-ui][data-theme='dark'] {
+[data-wallet-theme][data-theme='dark'] {
   --wui-color-primary: #bfbff9;
   --wui-color-primary-hover: #d4d4fa;
   --wui-color-primary-text: #001324;
@@ -116,7 +119,7 @@
 }
 
 /* Dark mode via .dark class on ancestor (Tailwind convention) */
-.dark [data-wallet-ui]:not([data-theme='light']) {
+.dark [data-wallet-theme]:not([data-theme='light']) {
   --wui-color-primary: #bfbff9;
   --wui-color-primary-hover: #d4d4fa;
   --wui-color-primary-text: #001324;
@@ -140,7 +143,7 @@
 
 /* Dark mode via system preference (when theme="system" or no explicit theme) */
 @media (prefers-color-scheme: dark) {
-  [data-wallet-ui]:not([data-theme='light']):not([data-theme='dark']) {
+  [data-wallet-theme]:not([data-theme='light']):not([data-theme='dark']) {
     --wui-color-primary: #bfbff9;
     --wui-color-primary-hover: #d4d4fa;
     --wui-color-primary-text: #001324;

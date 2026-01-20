@@ -78,23 +78,23 @@ function injectThemeStyles() {
   styleElement.id = THEME_STYLES_ID
   styleElement.textContent = `
     /* Light mode (default) */
-    [data-wallet-ui] {
+    [data-wallet-theme] {
       ${lightThemeVars}
     }
 
     /* Dark mode via data-theme attribute (explicit) */
-    [data-wallet-ui][data-theme='dark'] {
+    [data-wallet-theme][data-theme='dark'] {
       ${darkThemeVars}
     }
 
     /* Dark mode via .dark class on ancestor (Tailwind convention) */
-    .dark [data-wallet-ui]:not([data-theme='light']) {
+    .dark [data-wallet-theme]:not([data-theme='light']) {
       ${darkThemeVars}
     }
 
     /* Dark mode via system preference (when theme="system" or no explicit theme) */
     @media (prefers-color-scheme: dark) {
-      [data-wallet-ui]:not([data-theme='light']):not([data-theme='dark']) {
+      [data-wallet-theme]:not([data-theme='light']):not([data-theme='dark']) {
         ${darkThemeVars}
       }
     }
@@ -349,7 +349,7 @@ export function WalletUIProvider({
 
   const content = (
     <WalletUIContext.Provider value={contextValue}>
-      <div data-wallet-ui data-theme={dataTheme}>
+      <div data-wallet-theme data-theme={dataTheme}>
         {/* Internal prefetcher component that runs automatically */}
         <WalletAccountsPrefetcher
           enabled={enablePrefetching}

@@ -8,7 +8,7 @@ test.describe('System Theme Preference', () => {
   }) => {
     await page.emulateMedia({ colorScheme: 'light' })
     await page.goto('/')
-    await page.waitForSelector('[data-wallet-ui]')
+    await page.waitForSelector('[data-wallet-theme]')
     await selectTheme('system')
 
     await assertLightTheme()
@@ -21,7 +21,7 @@ test.describe('System Theme Preference', () => {
   }) => {
     await page.emulateMedia({ colorScheme: 'dark' })
     await page.goto('/')
-    await page.waitForSelector('[data-wallet-ui]')
+    await page.waitForSelector('[data-wallet-theme]')
     await selectTheme('system')
 
     await assertDarkTheme()
@@ -32,11 +32,11 @@ test.describe('System Theme Preference', () => {
     selectTheme,
   }) => {
     await page.goto('/')
-    await page.waitForSelector('[data-wallet-ui]')
+    await page.waitForSelector('[data-wallet-theme]')
     await selectTheme('system')
 
     const dataTheme = await page
-      .locator('[data-wallet-ui]')
+      .locator('[data-wallet-theme]')
       .getAttribute('data-theme')
     expect(dataTheme).toBeNull()
   })
@@ -48,7 +48,7 @@ test.describe('System Theme Preference', () => {
     assertDarkTheme,
   }) => {
     await page.goto('/')
-    await page.waitForSelector('[data-wallet-ui]')
+    await page.waitForSelector('[data-wallet-theme]')
     await selectTheme('system')
 
     // Start with light

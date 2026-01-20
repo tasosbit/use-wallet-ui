@@ -57,6 +57,7 @@ export const ConnectedWalletButton = React.forwardRef<
   return (
     <button
       ref={ref}
+      data-wallet-ui
       data-wallet-button
       className={cn(baseStyles, sizeClasses[size], className)}
       style={style}

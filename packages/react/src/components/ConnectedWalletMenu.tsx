@@ -160,7 +160,7 @@ function ConnectedWalletMenuContent({ children }: ConnectedWalletMenuProps) {
                 {...getFloatingProps()}
                 role="menu"
                 aria-labelledby={labelId}
-                className="z-50 w-80 rounded-xl bg-(--wui-color-bg) shadow-xl border border-(--wui-color-border)"
+                className="z-50 w-80 rounded-xl bg-[var(--wui-color-bg)] shadow-xl border border-[var(--wui-color-border)]"
               >
                 <div className="p-4">
                   <div className="flex items-center gap-3 mb-4">
@@ -174,7 +174,7 @@ function ConnectedWalletMenuContent({ children }: ConnectedWalletMenuProps) {
                     <div>
                       <h3
                         id={labelId}
-                        className="text-lg font-bold text-(--wui-color-text) max-w-[220px] truncate wallet-custom-font"
+                        className="text-lg font-bold text-[var(--wui-color-text)] max-w-[220px] truncate wallet-custom-font"
                       >
                         {nfdName ||
                           (activeAddress
@@ -182,7 +182,7 @@ function ConnectedWalletMenuContent({ children }: ConnectedWalletMenuProps) {
                             : 'My Wallet')}
                       </h3>
                       {nfdName && activeAddress && (
-                        <p className="text-sm text-(--wui-color-text-secondary)">
+                        <p className="text-sm text-[var(--wui-color-text-secondary)]">
                           {formatShortAddress(activeAddress, 6, 4)}
                         </p>
                       )}
@@ -190,17 +190,17 @@ function ConnectedWalletMenuContent({ children }: ConnectedWalletMenuProps) {
                   </div>
 
                   {/* Balance display with toggle */}
-                  <div className="mb-4 bg-(--wui-color-bg-secondary) rounded-lg p-3">
+                  <div className="mb-4 bg-[var(--wui-color-bg-secondary)] rounded-lg p-3">
                     <div className="flex justify-between items-center">
                       {displayBalance !== null && (
-                        <span className="text-base font-medium text-(--wui-color-text) flex items-center gap-1">
+                        <span className="text-base font-medium text-[var(--wui-color-text)] flex items-center gap-1">
                           {formatNumber(displayBalance, { fractionDigits: 4 })}
                           <AlgoSymbol />
                         </span>
                       )}
                       <button
                         onClick={toggleBalanceView}
-                        className="flex items-center gap-1 text-sm text-(--wui-color-text-secondary) bg-(--wui-color-bg-tertiary) py-1 pl-2.5 pr-2 rounded-md hover:brightness-90 transition-all focus:outline-none"
+                        className="flex items-center gap-1 text-sm text-[var(--wui-color-text-secondary)] bg-[var(--wui-color-bg-tertiary)] py-1 pl-2.5 pr-2 rounded-md hover:brightness-90 transition-all focus:outline-none"
                         title={
                           showAvailableBalance
                             ? 'Show total balance'
@@ -236,11 +236,11 @@ function ConnectedWalletMenuContent({ children }: ConnectedWalletMenuProps) {
                           value={activeAddress || ''}
                           onChange={handleAccountChange}
                         >
-                          <Label className="block text-sm font-medium text-(--wui-color-text-secondary) mb-1">
+                          <Label className="block text-sm font-medium text-[var(--wui-color-text-secondary)] mb-1">
                             Select Account
                           </Label>
                           <div className="relative mt-1">
-                            <ListboxButton className="grid w-full cursor-default grid-cols-1 rounded-lg border border-(--wui-color-border) bg-(--wui-color-bg-secondary) py-2 px-3 text-left text-(--wui-color-text) shadow-sm focus:outline-none focus:ring-2 focus:ring-(--wui-color-primary) focus:border-transparent text-sm">
+                            <ListboxButton className="grid w-full cursor-default grid-cols-1 rounded-lg border border-[var(--wui-color-border)] bg-[var(--wui-color-bg-secondary)] py-2 px-3 text-left text-[var(--wui-color-text)] shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--wui-color-primary)] focus:border-transparent text-sm">
                               <span className="col-start-1 row-start-1 truncate pr-8">
                                 {activeAddress
                                   ? formatShortAddress(activeAddress, 6, 4)
@@ -253,7 +253,7 @@ function ConnectedWalletMenuContent({ children }: ConnectedWalletMenuProps) {
                                   height="16"
                                   viewBox="0 0 16 16"
                                   fill="none"
-                                  className="text-(--wui-color-text-secondary)"
+                                  className="text-[var(--wui-color-text-secondary)]"
                                   aria-hidden="true"
                                 >
                                   <path
@@ -268,18 +268,18 @@ function ConnectedWalletMenuContent({ children }: ConnectedWalletMenuProps) {
                             </ListboxButton>
                             <ListboxOptions
                               transition
-                              className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-(--wui-color-bg-secondary) py-1 shadow-lg ring-1 ring-black/5 focus:outline-none text-sm data-closed:data-leave:opacity-0 data-leave:transition data-leave:duration-100 data-leave:ease-in"
+                              className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-[var(--wui-color-bg-secondary)] py-1 shadow-lg ring-1 ring-black/5 focus:outline-none text-sm data-[closed]:data-[leave]:opacity-0 data-[leave]:transition data-[leave]:duration-100 data-[leave]:ease-in"
                             >
                               {activeWallet.accounts.map((account) => (
                                 <ListboxOption
                                   key={account.address}
                                   value={account.address}
-                                  className="group relative cursor-default select-none py-2 pl-3 pr-9 text-(--wui-color-text) data-focus:bg-(--wui-color-bg-hover) data-focus:outline-none"
+                                  className="group relative cursor-default select-none py-2 pl-3 pr-9 text-[var(--wui-color-text)] data-[focus]:bg-[var(--wui-color-bg-hover)] data-[focus]:outline-none"
                                 >
-                                  <span className="block truncate font-normal group-data-selected:font-medium">
+                                  <span className="block truncate font-normal group-data-[selected]:font-medium">
                                     {formatShortAddress(account.address, 6, 4)}
                                   </span>
-                                  <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-(--wui-color-primary) group-[&:not([data-selected])]:hidden">
+                                  <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-[var(--wui-color-primary)] group-[&:not([data-selected])]:hidden">
                                     <svg
                                       xmlns="http://www.w3.org/2000/svg"
                                       width="16"
@@ -307,7 +307,7 @@ function ConnectedWalletMenuContent({ children }: ConnectedWalletMenuProps) {
                     )}
 
                   {/* Divider */}
-                  <div className="border-t border-(--wui-color-border) mt-2 mb-2" />
+                  <div className="border-t border-[var(--wui-color-border)] mt-2 mb-2" />
 
                   {/* Wallet info section */}
                   {activeWallet && (
@@ -320,10 +320,10 @@ function ConnectedWalletMenuContent({ children }: ConnectedWalletMenuProps) {
                             className="max-w-full max-h-full"
                           />
                         ) : (
-                          <div className="h-5 w-5 rounded-full bg-(--wui-color-bg-tertiary) flex items-center justify-center">
+                          <div className="h-5 w-5 rounded-full bg-[var(--wui-color-bg-tertiary)] flex items-center justify-center">
                             <svg
                               xmlns="http://www.w3.org/2000/svg"
-                              className="h-3 w-3 text-(--wui-color-text-tertiary)"
+                              className="h-3 w-3 text-[var(--wui-color-text-tertiary)]"
                               viewBox="0 0 20 20"
                               fill="currentColor"
                             >
@@ -336,21 +336,21 @@ function ConnectedWalletMenuContent({ children }: ConnectedWalletMenuProps) {
                           </div>
                         )}
                       </div>
-                      <p className="text-sm text-(--wui-color-text-secondary)">
+                      <p className="text-sm text-[var(--wui-color-text-secondary)]">
                         {activeWallet.metadata.name}
                       </p>
                     </div>
                   )}
 
                   {/* Divider */}
-                  <div className="border-t border-(--wui-color-border) mb-3 mt-2" />
+                  <div className="border-t border-[var(--wui-color-border)] mb-3 mt-2" />
 
                   {/* Action buttons */}
                   <div className="flex gap-2">
                     {/* Copy Address Button */}
                     <button
                       onClick={handleCopyAddress}
-                      className="flex-1 py-2 px-4 bg-(--wui-color-bg-tertiary) text-(--wui-color-text-secondary) font-medium rounded-xl hover:brightness-90 transition-all text-sm flex items-center justify-center"
+                      className="flex-1 py-2 px-4 bg-[var(--wui-color-bg-tertiary)] text-[var(--wui-color-text-secondary)] font-medium rounded-xl hover:brightness-90 transition-all text-sm flex items-center justify-center"
                       title="Copy address"
                     >
                       {isCopied ? (
@@ -388,7 +388,7 @@ function ConnectedWalletMenuContent({ children }: ConnectedWalletMenuProps) {
                     {/* Disconnect Button */}
                     <button
                       onClick={handleDisconnect}
-                      className="flex-1 py-2 px-4 bg-(--wui-color-danger-bg) text-(--wui-color-danger-text) font-medium rounded-xl hover:bg-(--wui-color-danger-bg-hover) transition-colors text-sm"
+                      className="flex-1 py-2 px-4 bg-[var(--wui-color-danger-bg)] text-[var(--wui-color-danger-text)] font-medium rounded-xl hover:bg-[var(--wui-color-danger-bg-hover)] transition-colors text-sm"
                     >
                       Disconnect
                     </button>

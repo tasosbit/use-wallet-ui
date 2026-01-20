@@ -129,7 +129,7 @@ export function ConnectWalletMenu({ children }: ConnectWalletMenuProps) {
         {isOpen && (
           <div data-wallet-ui data-theme={dataTheme}>
             <FloatingOverlay
-              className="grid place-items-center px-4 z-50 transition-opacity duration-150 ease-in-out bg-(--wui-color-overlay) data-[state=starting]:opacity-0 data-[state=exiting]:opacity-0 data-[state=entered]:opacity-100"
+              className="grid place-items-center px-4 z-50 transition-opacity duration-150 ease-in-out bg-[var(--wui-color-overlay)] data-[state=starting]:opacity-0 data-[state=exiting]:opacity-0 data-[state=entered]:opacity-100"
               data-state={animationState}
               lockScroll
             >
@@ -142,7 +142,7 @@ export function ConnectWalletMenu({ children }: ConnectWalletMenuProps) {
                   })}
                   role="dialog"
                   data-state={animationState}
-                  className="w-full max-w-sm rounded-3xl bg-(--wui-color-bg) shadow-xl transform transition-all duration-150 ease-in-out data-[state=starting]:opacity-0 data-[state=starting]:scale-90 data-[state=exiting]:opacity-0 data-[state=exiting]:scale-90 data-[state=entered]:opacity-100 data-[state=entered]:scale-100"
+                  className="w-full max-w-sm rounded-3xl bg-[var(--wui-color-bg)] shadow-xl transform transition-all duration-150 ease-in-out data-[state=starting]:opacity-0 data-[state=starting]:scale-90 data-[state=exiting]:opacity-0 data-[state=exiting]:scale-90 data-[state=entered]:opacity-100 data-[state=entered]:scale-100"
                   style={{
                     marginTop: '-0.5rem',
                   }}
@@ -151,14 +151,14 @@ export function ConnectWalletMenu({ children }: ConnectWalletMenuProps) {
                   <div className="relative flex items-center px-6 pt-5 pb-4">
                     <h2
                       id={labelId}
-                      className="text-xl font-bold text-(--wui-color-text) wallet-custom-font"
+                      className="text-xl font-bold text-[var(--wui-color-text)] wallet-custom-font"
                     >
                       Connect a Wallet
                     </h2>
                     {/* Close button */}
                     <button
                       onClick={() => context.onOpenChange(false)}
-                      className="absolute right-4 rounded-full bg-(--wui-color-bg-tertiary) p-2 text-(--wui-color-text-secondary) hover:brightness-90 transition-all"
+                      className="absolute right-4 rounded-full bg-[var(--wui-color-bg-tertiary)] p-2 text-[var(--wui-color-text-secondary)] hover:brightness-90 transition-all"
                       aria-label="Close dialog"
                     >
                       <svg
@@ -185,13 +185,13 @@ export function ConnectWalletMenu({ children }: ConnectWalletMenuProps) {
                   </div>
 
                   {/* Footer section */}
-                  <div className="px-6 py-5 border-t border-(--wui-color-border) flex items-center justify-between">
-                    <span className="text-(--wui-color-text-secondary) text-sm">
+                  <div className="px-6 py-5 border-t border-[var(--wui-color-border)] flex items-center justify-between">
+                    <span className="text-[var(--wui-color-text-secondary)] text-sm">
                       Need an Algorand wallet?
                     </span>
                     <a
                       href="https://algorand.co/wallets"
-                      className="text-(--wui-color-link) font-medium text-sm hover:text-(--wui-color-link-hover)"
+                      className="text-[var(--wui-color-link)] font-medium text-sm hover:text-[var(--wui-color-link-hover)]"
                       target="_blank"
                       rel="noopener noreferrer"
                     >

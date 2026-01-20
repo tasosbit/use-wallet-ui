@@ -63,6 +63,7 @@ export default defineConfig({
     // Desktop Chrome - Light Mode (default)
     {
       name: 'chromium',
+      testIgnore: /customization\/.+\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
       },
@@ -71,6 +72,7 @@ export default defineConfig({
     // Desktop Chrome - Dark Mode (system preference)
     {
       name: 'chromium-dark',
+      testIgnore: /customization\/.+\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
         colorScheme: 'dark',
@@ -80,6 +82,7 @@ export default defineConfig({
     // Desktop Firefox
     {
       name: 'firefox',
+      testIgnore: /customization\/.+\.spec\.ts/,
       use: {
         ...devices['Desktop Firefox'],
       },
@@ -88,18 +91,39 @@ export default defineConfig({
     // Desktop Safari
     {
       name: 'webkit',
+      testIgnore: /customization\/.+\.spec\.ts/,
       use: {
         ...devices['Desktop Safari'],
       },
     },
+
+    // Customization tests - runs against react-custom example
+    // This project tests CSS customization patterns (not run by default in CI)
+    {
+      name: 'customization',
+      testMatch: /customization\/.+\.spec\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: 'http://localhost:5174',
+      },
+    },
   ],
 
-  // Web server configuration - start example app before tests
-  webServer: {
-    command: 'pnpm --filter @txnlab/use-wallet-ui-react-example dev',
-    url: 'http://localhost:5173',
-    reuseExistingServer: !CI,
-    timeout: 120000,
-    cwd: '..',
-  },
+  // Web server configuration - start example apps before tests
+  webServer: [
+    {
+      command: 'pnpm --filter @txnlab/use-wallet-ui-react-example dev',
+      url: 'http://localhost:5173',
+      reuseExistingServer: !CI,
+      timeout: 120000,
+      cwd: '..',
+    },
+    {
+      command: 'pnpm --filter @txnlab/use-wallet-ui-react-custom-example dev',
+      url: 'http://localhost:5174',
+      reuseExistingServer: !CI,
+      timeout: 120000,
+      cwd: '..',
+    },
+  ],
 })

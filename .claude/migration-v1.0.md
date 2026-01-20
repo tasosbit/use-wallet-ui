@@ -86,7 +86,7 @@ Variables:
 - [x] Fix Docker scripts to use Playwright v1.57.0
 - [x] Fix `css-variables.spec.ts` portal selector (`#wallet-dialog-portal [data-wallet-ui]`)
 - [x] Regenerate visual regression baselines via Docker
-- [ ] *(Optional)* Add E2E tests for `react-custom` example app
+- [x] Add E2E tests for `react-custom` example app (customization tests)
 
 ### README Documentation
 - [ ] Update main README.md with new customization API

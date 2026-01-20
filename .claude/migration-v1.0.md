@@ -105,17 +105,23 @@ Variables:
 - [x] Update Tailwind classes from gray to slate palette
 - [x] Remove unused CSS classes and variables
 
-### Final Verification
-- [ ] Build the package: `pnpm build`
-- [ ] Generate CSS: `pnpm generate:css`
-- [ ] Verify `dist/style.css` output
-- [ ] Run all examples and verify functionality
-- [ ] Test in consumer app (Haystack) if applicable
+### Final Verification ✅
+- [x] Build the package: `pnpm build`
+- [x] Generate CSS: `pnpm generate:css`
+- [x] Verify `dist/style.css` output
+- [x] Run all examples and verify functionality
+- [ ] Test in consumer app (Haystack) via beta pre-release
 
-### Release Preparation
-- [ ] Create CHANGELOG.md entry for v1.0.0
-- [ ] Update package.json version
-- [ ] Tag release
+### Release Preparation ✅
+- [x] Semantic-release handles CHANGELOG.md, version, and tags automatically
+- [x] Enable beta releases in `.github/workflows/release.yml`
+- [x] Update E2E scripts for cross-platform compatibility (exclude button tests on macOS)
+
+### Post-Release
+- [ ] Test beta in Haystack via draft PR
+- [ ] Address any issues found during testing
+- [ ] Merge beta → main for stable v1.0.0 release
+- [ ] Delete this migration document after stable release
 
 ## Key Files Modified
 

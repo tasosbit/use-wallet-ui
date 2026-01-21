@@ -57,7 +57,8 @@ const performFontInjection = (): void => {
         font-family: 'Aeonik', system-ui, sans-serif !important;
       }
     `
-    document.head.appendChild(style)
+    // Insert at the START of <head> so consumer styles can override if needed
+    document.head.insertBefore(style, document.head.firstChild)
     console.log('Wallet UI fonts loaded')
   } catch (error) {
     console.warn(

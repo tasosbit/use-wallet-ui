@@ -99,7 +99,8 @@ function injectThemeStyles() {
       }
     }
   `
-  document.head.appendChild(styleElement)
+  // Insert at the START of <head> so consumer CSS (loaded later) can override
+  document.head.insertBefore(styleElement, document.head.firstChild)
 }
 
 interface WalletUIContextType {

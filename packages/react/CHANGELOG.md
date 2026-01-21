@@ -1,3 +1,22 @@
+# [1.0.0](https://github.com/TxnLab/use-wallet-ui/compare/v0.4.2...v1.0.0) (2026-01-21)
+
+
+### Bug Fixes
+
+* **css:** inject styles at start of head for consumer overrides ([#32](https://github.com/TxnLab/use-wallet-ui/issues/32)) ([820c6c7](https://github.com/TxnLab/use-wallet-ui/commit/820c6c70ef3e556d609949bb9d465c2cb8a24d42))
+* **NfdAvatar:** add data-wallet-ui for CSS utility scoping ([#31](https://github.com/TxnLab/use-wallet-ui/issues/31)) ([b58b7a0](https://github.com/TxnLab/use-wallet-ui/commit/b58b7a034ce9c102cf66bddf269c5f4461a1d3c3))
+* **css:** use :where() for button reset to allow utility overrides ([#25](https://github.com/TxnLab/use-wallet-ui/issues/25)) ([221c660](https://github.com/TxnLab/use-wallet-ui/commit/221c660f3824e595e882ed4a3e4180510d7f4b94))
+* **css:** use Tailwind v3-compatible CSS variable syntax ([#24](https://github.com/TxnLab/use-wallet-ui/issues/24)) ([a4aeeb7](https://github.com/TxnLab/use-wallet-ui/commit/a4aeeb75292c801329a91c1d4acdf772caf84a30))
+
+
+* feat(css)!: redesign CSS architecture for v1.0 ([fb6ccc3](https://github.com/TxnLab/use-wallet-ui/commit/fb6ccc37cbc00ecfe353134b6544750053cd5f11))
+
+
+### BREAKING CHANGES
+
+* CSS architecture has been redesigned for better
+customization support and isolation.
+
 # [1.0.0-beta.3](https://github.com/TxnLab/use-wallet-ui/compare/v1.0.0-beta.2...v1.0.0-beta.3) (2026-01-21)
 
 

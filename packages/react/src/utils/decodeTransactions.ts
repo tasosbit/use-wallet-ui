@@ -10,12 +10,16 @@ export interface DecodedTransaction {
   receiver?: string
   receiverShort?: string
   amount?: string
+  rawAmount?: bigint
   assetIndex?: number
   appIndex?: number
   rekeyTo?: string
   rekeyToShort?: string
   closeRemainderTo?: string
   closeRemainderToShort?: string
+  freezeTarget?: string
+  freezeTargetShort?: string
+  isFreezing?: boolean
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -108,6 +112,7 @@ export function decodeTransactions(
       const receiverStr = txn.assetTransfer.receiver.toString()
       decoded.receiver = receiverStr
       decoded.receiverShort = formatShortAddress(receiverStr, 4, 4)
+      decoded.rawAmount = txn.assetTransfer.amount
       decoded.amount = txn.assetTransfer.amount.toString()
       decoded.assetIndex = Number(txn.assetTransfer.assetIndex)
       if (txn.assetTransfer.closeRemainderTo) {
@@ -124,6 +129,10 @@ export function decodeTransactions(
 
     if (txn.assetFreeze) {
       decoded.assetIndex = Number(txn.assetFreeze.assetIndex)
+      const freezeTargetStr = txn.assetFreeze.freezeAccount.toString()
+      decoded.freezeTarget = freezeTargetStr
+      decoded.freezeTargetShort = formatShortAddress(freezeTargetStr, 4, 4)
+      decoded.isFreezing = txn.assetFreeze.frozen
     }
 
     if (txn.applicationCall) {

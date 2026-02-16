@@ -102,7 +102,19 @@ export function WelcomeDialog({ algorandAddress, evmAddress, onDismiss }: Welcom
               {/* Content */}
               <div id={descriptionId} className="px-6 pb-4 space-y-4">
                 <p className="text-sm text-[var(--wui-color-text-secondary)]">
-                  You can use Algorand with your very own Liquid EVM account, which wraps your EVM private key, preserving full self-custodial control. <a href="#" onClick={() => { alert("Soon"); return false}}>Learn more.</a>
+                  You can use Algorand with your very own Liquid EVM account, which wraps your EVM private key, preserving full
+                  self-custodial control.{' '}
+                  <a
+                    className="text-[var(--wui-color-link)] hover:text-[var(--wui-color-link-hover)]"
+                    rel="noopener noreferrer"
+                    href="#"
+                    onClick={() => {
+                      alert('Soon')
+                      return false
+                    }}
+                  >
+                    Learn more.
+                  </a>
                 </p>
 
                 <div className="!my-4 rounded-xl border border-[var(--wui-color-border)] bg-[var(--wui-color-bg-secondary)] p-3 space-y-2">
@@ -116,8 +128,17 @@ export function WelcomeDialog({ algorandAddress, evmAddress, onDismiss }: Welcom
                         aria-label="Copy EVM address"
                       >
                         {copiedField === 'evm' ? (
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-3.5 w-3.5 text-green-500"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                              clipRule="evenodd"
+                            />
                           </svg>
                         ) : (
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
@@ -138,8 +159,17 @@ export function WelcomeDialog({ algorandAddress, evmAddress, onDismiss }: Welcom
                         aria-label="Copy Algorand address"
                       >
                         {copiedField === 'algorand' ? (
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-3.5 w-3.5 text-green-500"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                              clipRule="evenodd"
+                            />
                           </svg>
                         ) : (
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
@@ -153,7 +183,15 @@ export function WelcomeDialog({ algorandAddress, evmAddress, onDismiss }: Welcom
                 </div>
 
                 <p className="text-sm text-[var(--wui-color-text-secondary)]">
-                  To get started, <a target="_blank" href="https://algorand.co/ecosystem/directory?tags=CEX">fund</a> your new Algorand account via CEX, Card onramp, or <a target="_blank" href="https://core.allbridge.io/?ft=USDC&tt=USDC&f=BAS&t=ALG">bridge USDC</a> in 2 minutes.
+                  To get started,{' '}
+                  <a className="text-[var(--wui-color-link)] hover:text-[var(--wui-color-link-hover)]" rel="noopener noreferrer" target="_blank" href="https://algorand.co/ecosystem/directory?tags=CEX">
+                    fund
+                  </a>{' '}
+                  your new Algorand account via CEX, Card onramp, or{' '}
+                  <a className="text-[var(--wui-color-link)] hover:text-[var(--wui-color-link-hover)]" rel="noopener noreferrer" target="_blank" href="https://core.allbridge.io/?ft=USDC&tt=USDC&f=BAS&t=ALG">
+                    bridge USDC
+                  </a>{' '}
+                  in 2 minutes.
                 </p>
               </div>
 
@@ -163,7 +201,7 @@ export function WelcomeDialog({ algorandAddress, evmAddress, onDismiss }: Welcom
                   onClick={() => {
                     setAnimationState('exiting')
                     setTimeout(() => onDismiss(), 150)
-                    window.open("https://algorand.co/algorand-start-here#hs_cos_wrapper_widget_1769533007886")
+                    window.open('https://algorand.co/algorand-start-here#hs_cos_wrapper_widget_1769533007886')
                   }}
                   className="w-full py-2.5 px-4 bg-[var(--wui-color-primary)] text-white font-medium rounded-xl hover:brightness-90 transition-all text-sm"
                 >

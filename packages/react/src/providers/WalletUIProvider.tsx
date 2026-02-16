@@ -322,9 +322,9 @@ export function WalletUIProvider({
   // Before-sign dialog state
   const [pendingSign, setPendingSign] = useState<PendingSignRequest | null>(null)
 
-  const requestBeforeSign = useCallback((txnGroup: algosdk.Transaction[] | Uint8Array[], indexesToSign?: number[]) => {
+  const requestBeforeSign = useCallback((txnGroup: algosdk.Transaction[] | Uint8Array[]) => {
     return new Promise<void>((resolve, reject) => {
-      const { decodedTransactions, transactions, dangerous } = decodeTransactions(txnGroup, indexesToSign)
+      const { decodedTransactions, transactions, dangerous } = decodeTransactions(txnGroup)
       const messageRaw = LiquidEvmSdk.getSignPayload(transactions)
       const message = `0x${Buffer.from(messageRaw).toString('hex')}`
       setPendingSign({ transactions: decodedTransactions, message, dangerous, resolve, reject })
@@ -349,7 +349,7 @@ export function WalletUIProvider({
 
   const handleApproveSign = useCallback(() => {
     pendingSign?.resolve()
-    setPendingSign(null)
+    // setPendingSign(null)
   }, [pendingSign])
 
   const handleRejectSign = useCallback(() => {

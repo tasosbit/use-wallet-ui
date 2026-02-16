@@ -21,6 +21,123 @@ interface BeforeSignDialogProps {
   dangerous: TransactionDanger
 }
 
+interface TransactionFlowProps {
+  txn: DecodedTransaction
+}
+
+function TransactionFlow({ txn }: TransactionFlowProps) {
+  const renderFlowLine = (
+    from: string,
+    label: string,
+    to: string,
+    isDanger: boolean = false,
+    isSecondary: boolean = false,
+  ) => (
+    <div className={`grid grid-cols-[1fr_auto_1fr] w-full items-center font-mono text-xs ${isSecondary ? 'mt-1' : ''}`}>
+      <span className="text-[var(--wui-color-text-secondary)] text-left">{from}</span>
+      <span className="flex items-center justify-center gap-1 px-1">
+        <span className="text-[var(--wui-color-text-tertiary)]">--[</span>
+        <span className={isDanger ? 'text-[var(--wui-color-danger-text)] font-bold' : 'text-[var(--wui-color-primary)] font-medium'}>
+          {label}
+        </span>
+        <span className="text-[var(--wui-color-text-tertiary)]">]--&gt;</span>
+      </span>
+      <span className={`text-right ${isDanger ? 'text-[var(--wui-color-danger-text)] font-bold' : 'text-[var(--wui-color-text-secondary)]'}`}>{to}</span>
+    </div>
+  )
+
+  const renderRemainderLine = (to: string) => (
+    <div className="grid grid-cols-[1fr_auto_1fr] w-full items-center font-mono text-xs mt-1">
+      <span />
+      <span className="flex items-center justify-center gap-1 px-1">
+        <span className="text-[var(--wui-color-text-tertiary)]">--[</span>
+        <span className="text-[var(--wui-color-danger-text)] font-bold">remainder</span>
+        <span className="text-[var(--wui-color-text-tertiary)]">]--&gt;</span>
+      </span>
+      <span className="text-[var(--wui-color-danger-text)] font-bold text-right">{to}</span>
+    </div>
+  )
+
+  const renderRekeyLine = (from: string, to: string) => (
+    <div className="grid grid-cols-[1fr_auto_1fr] w-full items-center font-mono text-xs mt-1">
+      <span className="text-[var(--wui-color-text-secondary)] text-left">{from}</span>
+      <span className="flex items-center justify-center gap-1 px-1">
+        <span className="text-[var(--wui-color-text-tertiary)]">--[</span>
+        <span className="text-[var(--wui-color-danger-text)] font-bold">REKEY</span>
+        <span className="text-[var(--wui-color-text-tertiary)]">]--&gt;</span>
+      </span>
+      <span className="text-[var(--wui-color-danger-text)] font-bold text-right">{to}</span>
+    </div>
+  )
+
+  return (
+    <div className="space-y-0">
+      {/* Payment transaction */}
+      {txn.type === 'pay' && txn.receiverShort && (
+        <>
+          {renderFlowLine(txn.senderShort, txn.amount || '0 ALGO', txn.receiverShort)}
+          {txn.closeRemainderToShort && renderRemainderLine(txn.closeRemainderToShort)}
+        </>
+      )}
+
+      {/* Asset transfer */}
+      {txn.type === 'axfer' && txn.receiverShort && (
+        <>
+          {renderFlowLine(
+            txn.senderShort,
+            `${txn.amount || '0'} ASA#${txn.assetIndex}`,
+            txn.receiverShort,
+          )}
+          {txn.closeRemainderToShort && renderRemainderLine(txn.closeRemainderToShort)}
+        </>
+      )}
+
+      {/* Asset freeze */}
+      {txn.type === 'afrz' && txn.freezeTargetShort && (
+        <>
+          {renderFlowLine(
+            txn.senderShort,
+            `${txn.isFreezing ? 'Freeze' : 'Unfreeze'} ASA#${txn.assetIndex}`,
+            txn.freezeTargetShort,
+          )}
+        </>
+      )}
+
+      {/* Asset config */}
+      {txn.type === 'acfg' && (
+        <>
+          {renderFlowLine(
+            txn.senderShort,
+            `Configure ASA#${txn.assetIndex || 'NEW'}`,
+            txn.senderShort,
+          )}
+        </>
+      )}
+
+      {/* Application call */}
+      {txn.type === 'appl' && (
+        <>
+          {renderFlowLine(
+            txn.senderShort,
+            'APP CALL',
+            `App ${txn.appIndex || 'NEW'}`,
+          )}
+        </>
+      )}
+
+      {/* Key registration */}
+      {txn.type === 'keyreg' && (
+        <>
+          {renderFlowLine(txn.senderShort, 'KEY REG', txn.senderShort)}
+        </>
+      )}
+
+      {/* Rekey (applies to any transaction type) */}
+      {txn.rekeyToShort && renderRekeyLine(txn.senderShort, txn.rekeyToShort)}
+    </div>
+  )
+}
+
 export function BeforeSignDialog({ transactions, message, dangerous, onApprove, onReject }: BeforeSignDialogProps) {
   const { theme } = useWalletUI()
   const [animationState, setAnimationState] = useState<'starting' | 'entered' | 'exiting' | null>('starting')
@@ -74,8 +191,8 @@ export function BeforeSignDialog({ transactions, message, dangerous, onApprove, 
             >
               {/* Header */}
               <div className="flex items-center justify-between px-6 pt-5 pb-1">
-                <h2 id={labelId} className="text-lg font-bold text-[var(--wui-color-text)] wallet-custom-font">
-                  Review Transaction{transactions.length > 1 ? 's' : ''}
+                <h2 id={labelId} className={`text-lg font-bold wallet-custom-font ${dangerous ? 'text-[var(--wui-color-danger-text)]' : 'text-[var(--wui-color-text)]'}`}>
+                  {dangerous ? 'Review Dangerous ' : 'Review '}Transaction{transactions.length > 1 ? 's' : ''}
                 </h2>
                 <button
                   onClick={() => {
@@ -117,66 +234,19 @@ export function BeforeSignDialog({ transactions, message, dangerous, onApprove, 
                   {transactions.map((txn) => (
                     <div
                       key={txn.index}
-                      className={`rounded-xl border p-3 ${'border-[var(--wui-color-primary)] bg-[var(--wui-color-bg-secondary)]'}`}
+                      className="rounded-sm border p-3 border-[var(--wui-color-primary)] bg-[var(--wui-color-bg-secondary)]"
                     >
-                      <div className="space-y-1 text-xs">
-                        <div className="flex justify-between">
-                          <span className="text-[var(--wui-color-text-tertiary)]">From</span>
-                          <span className="text-[var(--wui-color-text-secondary)] font-mono">{txn.senderShort}</span>
-                        </div>
-
-                        {txn.receiver && (
-                          <div className="flex justify-between">
-                            <span className="text-[var(--wui-color-text-tertiary)]">To</span>
-                            <span className="text-[var(--wui-color-text-secondary)] font-mono">{txn.receiverShort}</span>
-                          </div>
-                        )}
-
-                        {txn.amount && (
-                          <div className="flex justify-between">
-                            <span className="text-[var(--wui-color-text-tertiary)]">Amount</span>
-                            <span className="text-[var(--wui-color-text)] font-medium">{txn.amount}</span>
-                          </div>
-                        )}
-
-                        {txn.assetIndex !== undefined && (
-                          <div className="flex justify-between">
-                            <span className="text-[var(--wui-color-text-tertiary)]">Asset ID</span>
-                            <span className="text-[var(--wui-color-text-secondary)]">{txn.assetIndex}</span>
-                          </div>
-                        )}
-
-                        {txn.appIndex !== undefined && (
-                          <div className="flex justify-between">
-                            <span className="text-[var(--wui-color-text-tertiary)]">App ID</span>
-                            <span className="text-[var(--wui-color-text-secondary)]">{txn.appIndex}</span>
-                          </div>
-                        )}
-
-                        {txn.rekeyTo && (
-                          <div className="flex justify-between">
-                            <span className="font-bold text-[var(--wui-color-danger-text)]">Rekey To</span>
-                            <span className="font-mono font-bold text-[var(--wui-color-danger-text)]">{txn.rekeyToShort}</span>
-                          </div>
-                        )}
-
-                        {txn.closeRemainderTo && (
-                          <div className="flex justify-between">
-                            <span className="font-bold text-[var(--wui-color-danger-text)]">Close To</span>
-                            <span className="font-mono font-bold text-[var(--wui-color-danger-text)]">{txn.closeRemainderToShort}</span>
-                          </div>
-                        )}
-                      </div>
+                      <TransactionFlow txn={txn} />
                     </div>
                   ))}
                 </div>
               </div>
 
               <div className="px-4 pb-4">
-                <div className="text-sm flex flex-col gap-2 border border-[var(--wui-color-danger-text)] text-[var(--wui-color-danger-text)] rounded-xl p-3">
+                <div className="text-sm flex flex-col gap-2 border border-[var(--wui-color-border)] rounded-xl p-3">
                   <div>Message to sign:</div>
-                  <div className="font-mono break-all">{message}</div>
-                  <div className="mt-2">Ensure the message is correct before approving.</div>
+                  <div className="font-mono break-all text-[var(--wui-color-danger-text)]">{message}</div>
+                  <div>Ensure the message is correct before approving.</div>
                 </div>
               </div>
 
@@ -198,9 +268,9 @@ export function BeforeSignDialog({ transactions, message, dangerous, onApprove, 
                       setAnimationState('exiting')
                       setTimeout(() => onApprove(), 150)
                     }}
-                    className="flex-1 py-2.5 px-4 bg-[var(--wui-color-primary)] text-white font-medium rounded-xl hover:brightness-90 transition-all text-sm"
+                    className="flex-1 py-2.5 px-4 bg-[var(--wui-color-danger-text)] text-white font-medium rounded-xl hover:brightness-90 transition-all text-sm"
                   >
-                    Approve
+                    Sign (Dangerous)
                   </button>
                 </div>
               ) : null}

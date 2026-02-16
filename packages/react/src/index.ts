@@ -17,7 +17,7 @@ export { useResolvedTheme } from './hooks/useResolvedTheme'
 export type { Theme, ResolvedTheme } from './hooks/useResolvedTheme'
 
 // Providers
-export { WalletUIProvider, useWalletUI } from './providers/WalletUIProvider'
+export { WalletUIProvider, useWalletUI, useBeforeSignDialog, useAfterSignDialog, useWelcomeDialog } from './providers/WalletUIProvider'
 
 // Initialize custom fonts
 initializeFonts()

@@ -35,8 +35,12 @@ export function useNfd(
   options: { enabled?: boolean; view?: NfdView } = {},
 ): UseQueryResult<NfdRecord | null> {
   const { activeAddress } = useWallet()
-  const { activeNetwork } = useNetwork()
+  const { activeNetwork, activeNetworkConfig } = useNetwork()
   const { enabled = true, view = 'thumbnail' } = options
+
+  // NFDs don't exist on localnet, so disable lookups
+  const isLocalnet = activeNetwork === 'localnet'
+  const isTestnet = activeNetworkConfig?.isTestnet ?? false
 
   return useQuery({
     queryKey: ['nfd', activeAddress, activeNetwork, view],
@@ -44,8 +48,6 @@ export function useNfd(
       if (!activeAddress) return null
 
       // Determine the API endpoint based on the network
-      // Only check for TestNet, otherwise use MainNet
-      const isTestnet = activeNetwork === 'testnet'
       const apiEndpoint = isTestnet
         ? 'https://api.testnet.nf.domains'
         : 'https://api.nf.domains'
@@ -74,7 +76,7 @@ export function useNfd(
       const data: NfdLookupResponse = await response.json()
       return data[activeAddress]
     },
-    enabled: enabled && !!activeAddress,
+    enabled: enabled && !!activeAddress && !isLocalnet,
     retry: (failureCount, error) => {
       // If the error is a 404 (not found), don't retry
       if (error instanceof Error && error.message.includes('404')) {

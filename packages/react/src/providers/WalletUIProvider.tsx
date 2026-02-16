@@ -1,25 +1,15 @@
-import {
-  QueryClient,
-  QueryClientProvider,
-  useQueryClient,
-} from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query'
 import { useWallet, useNetwork } from '@txnlab/use-wallet-react'
-import {
-  createContext,
-  ReactNode,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-} from 'react'
+import algosdk from 'algosdk'
+import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 
-import {
-  useResolvedTheme,
-  type Theme,
-  type ResolvedTheme,
-} from '../hooks/useResolvedTheme'
+import { BeforeSignDialog } from '../components/BeforeSignDialog'
+import { WelcomeDialog } from '../components/WelcomeDialog'
+import { useResolvedTheme, type Theme, type ResolvedTheme } from '../hooks/useResolvedTheme'
+import { decodeTransactions, TransactionDanger, type DecodedTransaction } from '../utils/decodeTransactions'
 
 import type { NfdLookupResponse, NfdView } from '../hooks/useNfd'
+import { LiquidEvmSdk } from 'liquid-accounts-evm'
 
 // CSS custom properties for theming - injected via JavaScript to avoid requiring CSS imports
 const THEME_STYLES_ID = 'wallet-ui-theme-styles'
@@ -98,15 +88,43 @@ function injectThemeStyles() {
         ${darkThemeVars}
       }
     }
+
+    /* Reset global button styles that may leak from the consuming app */
+    [data-wallet-ui] button {
+      border: none;
+      border-radius: unset;
+      padding: 0;
+      margin: 0;
+      background: none;
+      font: inherit;
+      color: inherit;
+      cursor: pointer;
+    }
   `
   // Insert at the START of <head> so consumer CSS (loaded later) can override
   document.head.insertBefore(styleElement, document.head.firstChild)
+}
+
+interface PendingSignRequest {
+  transactions: DecodedTransaction[]
+  dangerous: TransactionDanger
+  message: string
+  resolve: () => void
+  reject: (error: Error) => void
+}
+
+interface WelcomeAccount {
+  algorandAddress: string
+  evmAddress: string
 }
 
 interface WalletUIContextType {
   queryClient: QueryClient
   theme: Theme
   resolvedTheme: ResolvedTheme
+  requestBeforeSign: (txnGroup: algosdk.Transaction[] | Uint8Array[], indexesToSign?: number[]) => Promise<void>
+  requestAfterSign: () => void
+  requestWelcome: (account: WelcomeAccount) => void
 }
 
 interface WalletUIProviderProps {
@@ -153,21 +171,15 @@ const createDefaultQueryClient = () =>
     },
   })
 
-const WalletUIContext = createContext<WalletUIContextType | undefined>(
-  undefined,
-)
+const WalletUIContext = createContext<WalletUIContextType | undefined>(undefined)
 
 // Internal function to prefetch all account data when a wallet connects
-function WalletAccountsPrefetcher({
-  enabled,
-  nfdView,
-}: {
-  enabled: boolean
-  nfdView: NfdView
-}) {
+function WalletAccountsPrefetcher({ enabled, nfdView }: { enabled: boolean; nfdView: NfdView }) {
   const queryClient = useQueryClient()
   const { activeAddress, activeWallet, algodClient } = useWallet()
-  const { activeNetwork } = useNetwork()
+  const { activeNetwork, activeNetworkConfig } = useNetwork()
+  const isLocalnet = activeNetwork === 'localnet'
+  const isTestnet = activeNetworkConfig?.isTestnet ?? false
 
   // Previous activeAddress value
   const prevActiveAddressRef = useRef<string | null>(null)
@@ -197,15 +209,13 @@ function WalletAccountsPrefetcher({
       return
     }
 
-    console.log(
-      `[WalletUI] Prefetching data for all accounts in wallet ${activeWallet!.id}`,
-    )
+    console.log(`[WalletUI] Prefetching data for all accounts in wallet ${activeWallet!.id}`)
 
     // Get all addresses from the wallet
     const addresses = activeWallet!.accounts.map((account) => account.address)
 
-    // If we have addresses, fetch NFDs in batches of 20
-    if (addresses.length > 0) {
+    // If we have addresses, fetch NFDs in batches of 20 (skip for localnet)
+    if (addresses.length > 0 && !isLocalnet) {
       // Process addresses in batches of 20 (NFD API limit)
       const batchSize = 20
       const addressBatches = []
@@ -217,10 +227,7 @@ function WalletAccountsPrefetcher({
       // Process each batch
       addressBatches.forEach(async (batch) => {
         // Determine the API endpoint based on the network
-        const isTestnet = activeNetwork === 'testnet'
-        const apiEndpoint = isTestnet
-          ? 'https://api.testnet.nf.domains'
-          : 'https://api.nf.domains'
+        const apiEndpoint = isTestnet ? 'https://api.testnet.nf.domains' : 'https://api.nf.domains'
 
         // Build the query URL with multiple address parameters
         const queryParams = new URLSearchParams()
@@ -231,37 +238,28 @@ function WalletAccountsPrefetcher({
 
         try {
           // Make a single request for all addresses in the batch
-          const response = await fetch(
-            `${apiEndpoint}/nfd/lookup?${queryParams.toString()}`,
-            {
-              method: 'GET',
-              headers: {
-                Accept: 'application/json',
-              },
+          const response = await fetch(`${apiEndpoint}/nfd/lookup?${queryParams.toString()}`, {
+            method: 'GET',
+            headers: {
+              Accept: 'application/json',
             },
-          )
+          })
 
           // Handle response
           if (!response.ok && response.status !== 404) {
-            throw new Error(
-              `NFD prefetch lookup failed: ${response.statusText}`,
-            )
+            throw new Error(`NFD prefetch lookup failed: ${response.statusText}`)
           }
 
           // If we get a 404 or success, process the response
           // For 404, we'll get an empty object
-          const responseData: NfdLookupResponse =
-            response.status === 404 ? {} : await response.json()
+          const responseData: NfdLookupResponse = response.status === 404 ? {} : await response.json()
 
           // For each address in the batch, seed the query cache
           batch.forEach((address) => {
             const nfdData = responseData[address] || null
 
             // Seed the cache with this NFD data
-            queryClient.setQueryData(
-              ['nfd', address, activeNetwork, nfdView],
-              nfdData,
-            )
+            queryClient.setQueryData(['nfd', address, activeNetwork, nfdView], nfdData)
           })
         } catch (error) {
           console.error('Error prefetching NFD data:', error)
@@ -273,12 +271,10 @@ function WalletAccountsPrefetcher({
     addresses.forEach((address) => {
       // Prefetch balance data
       queryClient.prefetchQuery({
-        queryKey: ['account-balance', address],
+        queryKey: ['account-balance', address, activeNetwork],
         queryFn: async () => {
           try {
-            const accountInfo = await algodClient!
-              .accountInformation(address)
-              .do()
+            const accountInfo = await algodClient!.accountInformation(address).do()
             return Number(accountInfo.amount)
           } catch (error) {
             throw new Error(`Error fetching account balance: ${error}`)
@@ -286,15 +282,7 @@ function WalletAccountsPrefetcher({
         },
       })
     })
-  }, [
-    activeAddress,
-    activeWallet,
-    activeNetwork,
-    nfdView,
-    algodClient,
-    queryClient,
-    enabled,
-  ])
+  }, [activeAddress, activeWallet, activeNetwork, nfdView, algodClient, queryClient, enabled])
 
   // Return null since this is a utility component with no UI
   return null
@@ -321,10 +309,7 @@ export function WalletUIProvider({
   theme = 'system',
 }: WalletUIProviderProps) {
   // Use provided query client or create a default one
-  const queryClient = useMemo(
-    () => externalQueryClient || createDefaultQueryClient(),
-    [externalQueryClient],
-  )
+  const queryClient = useMemo(() => externalQueryClient || createDefaultQueryClient(), [externalQueryClient])
 
   // Resolve the theme (handles 'system' preference detection)
   const resolvedTheme = useResolvedTheme(theme)
@@ -334,13 +319,54 @@ export function WalletUIProvider({
     injectThemeStyles()
   }, [])
 
+  // Before-sign dialog state
+  const [pendingSign, setPendingSign] = useState<PendingSignRequest | null>(null)
+
+  const requestBeforeSign = useCallback((txnGroup: algosdk.Transaction[] | Uint8Array[], indexesToSign?: number[]) => {
+    return new Promise<void>((resolve, reject) => {
+      const { decodedTransactions, transactions, dangerous } = decodeTransactions(txnGroup, indexesToSign)
+      const messageRaw = LiquidEvmSdk.getSignPayload(transactions)
+      const message = `0x${Buffer.from(messageRaw).toString('hex')}`
+      setPendingSign({ transactions: decodedTransactions, message, dangerous, resolve, reject })
+      if (!dangerous) {
+        setTimeout(() => {
+          resolve()
+        }, 2500)
+      }
+    })
+  }, [])
+
+  const requestAfterSign = useCallback(() => {
+    setPendingSign(null)
+  }, [])
+
+  // Welcome dialog state
+  const [pendingWelcome, setPendingWelcome] = useState<WelcomeAccount | null>(null)
+
+  const requestWelcome = useCallback((account: WelcomeAccount) => {
+    setPendingWelcome(account)
+  }, [])
+
+  const handleApproveSign = useCallback(() => {
+    pendingSign?.resolve()
+    setPendingSign(null)
+  }, [pendingSign])
+
+  const handleRejectSign = useCallback(() => {
+    pendingSign?.reject(new Error('User rejected signing'))
+    setPendingSign(null)
+  }, [pendingSign])
+
   const contextValue = useMemo(
     () => ({
       queryClient,
       theme,
       resolvedTheme,
+      requestBeforeSign,
+      requestAfterSign,
+      requestWelcome,
     }),
-    [queryClient, theme, resolvedTheme],
+    [queryClient, theme, resolvedTheme, requestBeforeSign, requestAfterSign, requestWelcome],
   )
 
   // Determine the data-theme attribute value
@@ -352,20 +378,21 @@ export function WalletUIProvider({
     <WalletUIContext.Provider value={contextValue}>
       <div data-wallet-theme data-theme={dataTheme}>
         {/* Internal prefetcher component that runs automatically */}
-        <WalletAccountsPrefetcher
-          enabled={enablePrefetching}
-          nfdView={prefetchNfdView}
-        />
+        <WalletAccountsPrefetcher enabled={enablePrefetching} nfdView={prefetchNfdView} />
         {children}
+        {pendingSign && (
+          <BeforeSignDialog transactions={pendingSign.transactions} message={pendingSign.message} dangerous={pendingSign.dangerous} onApprove={handleApproveSign} onReject={handleRejectSign} />
+        )}
+        {pendingWelcome && (
+          <WelcomeDialog algorandAddress={pendingWelcome.algorandAddress} evmAddress={pendingWelcome.evmAddress} onDismiss={() => setPendingWelcome(null)} />
+        )}
       </div>
     </WalletUIContext.Provider>
   )
 
   // If no external query client was provided, wrap with our own QueryClientProvider
   if (!externalQueryClient) {
-    return (
-      <QueryClientProvider client={queryClient}>{content}</QueryClientProvider>
-    )
+    return <QueryClientProvider client={queryClient}>{content}</QueryClientProvider>
   }
 
   // Otherwise just return the context provider
@@ -382,4 +409,52 @@ export function useWalletUI(): WalletUIContextType {
     throw new Error('useWalletUI must be used within a WalletUIProvider')
   }
   return context
+}
+
+/**
+ * Hook that returns the `onBeforeSign` callback for use in wallet uiHooks configuration.
+ *
+ * @example
+ * ```tsx
+ * const { onBeforeSign } = useBeforeSignDialog()
+ *
+ * // Pass to wallet config:
+ * uiHooks: { onBeforeSign }
+ * ```
+ */
+export function useBeforeSignDialog() {
+  const { requestBeforeSign } = useWalletUI()
+  return { onBeforeSign: requestBeforeSign }
+}
+
+/**
+ * Hook that returns the `onAfterSign` callback for use in wallet uiHooks configuration.
+ *
+ * @example
+ * ```tsx
+ * const { onAfterSign } = useAfterSignDialog()
+ *
+ * // Pass to wallet config:
+ * uiHooks: { onAfterSign }
+ * ```
+ */
+export function useAfterSignDialog() {
+  const { requestAfterSign } = useWalletUI()
+  return { onAfterSign: requestAfterSign }
+}
+
+/**
+ * Hook that returns the `showWelcome` callback for displaying a welcome dialog.
+ *
+ * @example
+ * ```tsx
+ * const { showWelcome } = useWelcomeDialog()
+ *
+ * // Show welcome dialog for a new account:
+ * showWelcome({ algorandAddress: '...', evmAddress: '...' })
+ * ```
+ */
+export function useWelcomeDialog() {
+  const { requestWelcome } = useWalletUI()
+  return { showWelcome: requestWelcome }
 }

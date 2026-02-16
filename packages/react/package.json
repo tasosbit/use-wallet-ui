@@ -66,6 +66,7 @@
   },
   "peerDependencies": {
     "@txnlab/use-wallet-react": "^4.0.1",
+    "liquid-accounts-evm": "link:../../../evm-sdk",
     "react": "^18 || ^19",
     "react-dom": "^18 || ^19"
   },

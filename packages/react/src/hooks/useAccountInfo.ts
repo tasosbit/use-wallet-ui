@@ -1,5 +1,5 @@
 import { useQuery, UseQueryResult } from '@tanstack/react-query'
-import { useWallet } from '@txnlab/use-wallet-react'
+import { useWallet, useNetwork } from '@txnlab/use-wallet-react'
 import algosdk from 'algosdk'
 
 /**
@@ -12,10 +12,11 @@ export function useAccountInfo(
   options: { enabled?: boolean } = {},
 ): UseQueryResult<algosdk.modelsv2.Account | null> {
   const { activeAddress, algodClient } = useWallet()
+  const { activeNetwork } = useNetwork()
   const { enabled = true } = options
 
   return useQuery({
-    queryKey: ['account-info', activeAddress],
+    queryKey: ['account-info', activeAddress, activeNetwork],
     queryFn: async () => {
       if (!activeAddress || !algodClient) return null
 

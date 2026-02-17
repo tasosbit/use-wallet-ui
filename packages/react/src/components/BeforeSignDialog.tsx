@@ -8,10 +8,12 @@ import {
   FloatingPortal,
   useId,
 } from '@floating-ui/react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import type { DecodedTransaction, TransactionDanger } from '../utils/decodeTransactions'
 import { useWalletUI } from '../providers/WalletUIProvider'
+import { useAssets, type AssetInfo } from '../hooks/useAssets'
+import { getApplicationAddress } from 'algosdk'
 
 interface BeforeSignDialogProps {
   transactions: DecodedTransaction[]
@@ -23,9 +25,29 @@ interface BeforeSignDialogProps {
 
 interface TransactionFlowProps {
   txn: DecodedTransaction
+  assetInfo?: AssetInfo
+  appEscrows?: Record<string, string>
 }
 
-function TransactionFlow({ txn }: TransactionFlowProps) {
+function formatAssetAmount(rawAmount: bigint | undefined, info: AssetInfo): string {
+  if (rawAmount === undefined) return `0 ${info.unitName}`
+  if (info.decimals === 0) return `${rawAmount} ${info.unitName}`
+  const divisor = 10n ** BigInt(info.decimals)
+  const whole = rawAmount / divisor
+  const remainder = rawAmount % divisor
+  if (remainder === 0n) return `${whole} ${info.unitName}`
+  const frac = remainder.toString().padStart(info.decimals, '0').replace(/0+$/, '')
+  return `${whole}.${frac} ${info.unitName}`
+}
+
+function assetLabel(txn: DecodedTransaction, info?: AssetInfo): string {
+  if (info?.unitName) return info.unitName
+  return `ASA#${txn.assetIndex}`
+}
+
+function TransactionFlow({ txn, assetInfo, appEscrows = {} }: TransactionFlowProps) {
+  const resolveAddr = (full: string | undefined, short: string): string =>
+    (full && appEscrows[full]) || short
   const renderFlowLine = (
     from: string,
     label: string,
@@ -75,7 +97,7 @@ function TransactionFlow({ txn }: TransactionFlowProps) {
       {/* Payment transaction */}
       {txn.type === 'pay' && txn.receiverShort && (
         <>
-          {renderFlowLine(txn.senderShort, txn.amount || '0 ALGO', txn.receiverShort)}
+          {renderFlowLine(txn.senderShort, txn.amount || '0 ALGO', resolveAddr(txn.receiver, txn.receiverShort))}
           {txn.closeRemainderToShort && renderRemainderLine(txn.closeRemainderToShort)}
         </>
       )}
@@ -85,8 +107,8 @@ function TransactionFlow({ txn }: TransactionFlowProps) {
         <>
           {renderFlowLine(
             txn.senderShort,
-            `${txn.amount || '0'} ASA#${txn.assetIndex}`,
-            txn.receiverShort,
+            assetInfo ? formatAssetAmount(txn.rawAmount, assetInfo) : `${txn.amount || '0'} ASA#${txn.assetIndex}`,
+            resolveAddr(txn.receiver, txn.receiverShort),
           )}
           {txn.closeRemainderToShort && renderRemainderLine(txn.closeRemainderToShort)}
         </>
@@ -97,7 +119,7 @@ function TransactionFlow({ txn }: TransactionFlowProps) {
         <>
           {renderFlowLine(
             txn.senderShort,
-            `${txn.isFreezing ? 'Freeze' : 'Unfreeze'} ASA#${txn.assetIndex}`,
+            `${txn.isFreezing ? 'Freeze' : 'Unfreeze'} ${assetLabel(txn, assetInfo)}`,
             txn.freezeTargetShort,
           )}
         </>
@@ -108,7 +130,7 @@ function TransactionFlow({ txn }: TransactionFlowProps) {
         <>
           {renderFlowLine(
             txn.senderShort,
-            `Configure ASA#${txn.assetIndex || 'NEW'}`,
+            `Configure ${txn.assetIndex ? assetLabel(txn, assetInfo) : 'NEW'}`,
             txn.senderShort,
           )}
         </>
@@ -156,6 +178,29 @@ export function BeforeSignDialog({ transactions, message, dangerous, onApprove, 
       }
     },
   })
+
+  const assetIds = useMemo(() => {
+    const ids = new Set<string>()
+    for(const txn of transactions) {
+      if (txn.assetIndex) {
+        ids.add(txn.assetIndex.toString())
+      }
+    }
+    return Array.from(ids)
+  }, [transactions])
+
+  const { loading, assets } = useAssets(assetIds)
+
+  const appEscrows = useMemo(() => {
+    const escrows: Record<string, string> = {}
+    for (const txn of transactions) {
+      if (txn.type === 'appl' && txn.appIndex) {
+        const escrowAddr = getApplicationAddress(txn.appIndex)
+        escrows[escrowAddr.toString()] = `App ${txn.appIndex}`
+      }
+    }
+    return escrows
+  }, [transactions])
 
   const dismiss = useDismiss(context, { outsidePressEvent: 'mousedown' })
   const role = useRole(context, { role: 'alertdialog' })
@@ -230,23 +275,33 @@ export function BeforeSignDialog({ transactions, message, dangerous, onApprove, 
               )}
               {/* Transaction list */}
               <div className="px-4 pb-4 max-h-80 overflow-y-auto">
-                <div className="space-y-2">
-                  {transactions.map((txn) => (
-                    <div
-                      key={txn.index}
-                      className="rounded-sm border p-3 border-[var(--wui-color-primary)] bg-[var(--wui-color-bg-secondary)]"
-                    >
-                      <TransactionFlow txn={txn} />
-                    </div>
-                  ))}
-                </div>
+                {loading ? (
+                  <div className="flex items-center justify-center py-6 text-sm text-[var(--wui-color-text-secondary)]">
+                    <svg className="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Loading asset info...
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {transactions.map((txn) => (
+                      <div
+                        key={txn.index}
+                        className="rounded-sm border p-3 border-[var(--wui-color-primary)] bg-[var(--wui-color-bg-secondary)]"
+                      >
+                        <TransactionFlow txn={txn} assetInfo={txn.assetIndex ? assets[txn.assetIndex.toString()] : undefined} appEscrows={appEscrows} />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="px-4 pb-4">
                 <div className="text-sm flex flex-col gap-2 border border-[var(--wui-color-border)] rounded-xl p-3">
-                  <div>Message to sign:</div>
+                  <div>Transaction ID to sign:</div>
                   <div className="font-mono break-all text-[var(--wui-color-danger-text)]">{message}</div>
-                  <div>Ensure the message is correct before approving.</div>
+                  <div>Ensure the transaction ID is correct before approving.</div>
                 </div>
               </div>
 

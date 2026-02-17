@@ -66,7 +66,7 @@
   },
   "peerDependencies": {
     "@txnlab/use-wallet-react": "^4.0.1",
-    "liquid-accounts-evm": "link:../../../evm-sdk",
+    "liquid-accounts-evm": ">=0.0.1",
     "react": "^18 || ^19",
     "react-dom": "^18 || ^19"
   },
@@ -79,6 +79,7 @@
     "tailwind-merge": "3.4.0"
   },
   "devDependencies": {
+    "liquid-accounts-evm": "link:../../../evm-sdk",
     "@tailwindcss/cli": "4.1.18",
     "@types/react": "19.2.10",
     "@types/react-dom": "19.2.3",

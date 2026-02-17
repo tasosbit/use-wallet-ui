@@ -1,0 +1,9 @@
+[algokit]
+min_version = "v2.0.0"
+
+[project]
+type = "sdk"
+name = 'use-wallet-ui'
+
+[project.run]
+build = { commands = ['npm run build'], description = 'Build use-wallet-ui' }

@@ -20,6 +20,7 @@ interface BeforeSignDialogProps {
   message: string
   onApprove: () => void
   onReject: () => void
+  onClose: () => void
   dangerous: TransactionDanger
 }
 
@@ -160,7 +161,7 @@ function TransactionFlow({ txn, assetInfo, appEscrows = {} }: TransactionFlowPro
   )
 }
 
-export function BeforeSignDialog({ transactions, message, dangerous, onApprove, onReject }: BeforeSignDialogProps) {
+export function BeforeSignDialog({ transactions, message, dangerous, onApprove, onReject, onClose }: BeforeSignDialogProps) {
   const { theme } = useWalletUI()
   const [animationState, setAnimationState] = useState<'starting' | 'entered' | 'exiting' | null>('starting')
 
@@ -169,11 +170,12 @@ export function BeforeSignDialog({ transactions, message, dangerous, onApprove, 
   const { refs, context } = useFloating({
     open: true,
     onOpenChange: (open) => {
-      console.log('open changed:', open) // why not firing
       if (!open) {
         setAnimationState('exiting')
         if (dangerous) {
           setTimeout(() => onReject(), 150)
+        } else {
+          setTimeout(() => onClose(), 150)
         }
       }
     },

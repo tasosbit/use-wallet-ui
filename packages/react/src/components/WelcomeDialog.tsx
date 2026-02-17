@@ -203,7 +203,7 @@ export function WelcomeDialog({ algorandAddress, evmAddress, onDismiss }: Welcom
                     setTimeout(() => onDismiss(), 150)
                     window.open('https://algorand.co/algorand-start-here#hs_cos_wrapper_widget_1769533007886')
                   }}
-                  className="w-full py-2.5 px-4 bg-[var(--wui-color-primary)] text-white font-medium rounded-xl hover:brightness-90 transition-all text-sm"
+                  className="w-full py-2.5 px-4 bg-[var(--wui-color-primary)] text-[var(--wui-color-primary-text)] font-medium rounded-xl hover:brightness-90 transition-all text-sm"
                 >
                   Get Started
                 </button>

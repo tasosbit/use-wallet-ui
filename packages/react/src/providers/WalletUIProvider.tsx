@@ -321,6 +321,7 @@ export function WalletUIProvider({
 
   // Before-sign dialog state
   const [pendingSign, setPendingSign] = useState<PendingSignRequest | null>(null)
+  const [showSignDialog, setShowSignDialog] = useState(false)
 
   const requestBeforeSign = useCallback((txnGroup: algosdk.Transaction[] | Uint8Array[]) => {
     return new Promise<void>((resolve, reject) => {
@@ -328,6 +329,7 @@ export function WalletUIProvider({
       const messageRaw = LiquidEvmSdk.getSignPayload(transactions)
       const message = `0x${Buffer.from(messageRaw).toString('hex')}`
       setPendingSign({ transactions: decodedTransactions, message, dangerous, resolve, reject })
+      setShowSignDialog(true)
       if (!dangerous) {
         setTimeout(() => {
           resolve()
@@ -338,6 +340,7 @@ export function WalletUIProvider({
 
   const requestAfterSign = useCallback((_success: boolean, _errorMessage?: string) => {
     setPendingSign(null)
+    setShowSignDialog(false)
   }, [])
 
   // Welcome dialog state
@@ -381,11 +384,12 @@ export function WalletUIProvider({
   }, [manager, requestBeforeSign, requestAfterSign, onConnect])
 
   const handleApproveSign = useCallback(() => {
+    setShowSignDialog(false)
     pendingSign?.resolve()
-    // setPendingSign(null)
   }, [pendingSign])
 
   const handleRejectSign = useCallback(() => {
+    setShowSignDialog(false)
     pendingSign?.reject(new Error('User rejected signing'))
     setPendingSign(null)
   }, [pendingSign])
@@ -413,8 +417,8 @@ export function WalletUIProvider({
         {/* Internal prefetcher component that runs automatically */}
         <WalletAccountsPrefetcher enabled={enablePrefetching} nfdView={prefetchNfdView} />
         {children}
-        {pendingSign && (
-          <BeforeSignDialog transactions={pendingSign.transactions} message={pendingSign.message} dangerous={pendingSign.dangerous} onApprove={handleApproveSign} onReject={handleRejectSign} />
+        {showSignDialog && (
+          <BeforeSignDialog transactions={pendingSign!.transactions} message={pendingSign!.message} dangerous={pendingSign!.dangerous} onApprove={handleApproveSign} onReject={handleRejectSign} onClose={() => setShowSignDialog(false)} />
         )}
         {pendingWelcome && (
           <WelcomeDialog algorandAddress={pendingWelcome.algorandAddress} evmAddress={pendingWelcome.evmAddress} onDismiss={() => setPendingWelcome(null)} />

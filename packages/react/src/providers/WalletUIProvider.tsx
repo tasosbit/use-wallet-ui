@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query'
-import { useWallet, useNetwork } from '@txnlab/use-wallet-react'
+import { useWallet, useWalletManager, useNetwork } from '@txnlab/use-wallet-react'
 import algosdk from 'algosdk'
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 
@@ -123,7 +123,7 @@ interface WalletUIContextType {
   theme: Theme
   resolvedTheme: ResolvedTheme
   requestBeforeSign: (txnGroup: algosdk.Transaction[] | Uint8Array[], indexesToSign?: number[]) => Promise<void>
-  requestAfterSign: () => void
+  requestAfterSign: (success: boolean, errorMessage?: string) => void
   requestWelcome: (account: WelcomeAccount) => void
 }
 
@@ -336,7 +336,7 @@ export function WalletUIProvider({
     })
   }, [])
 
-  const requestAfterSign = useCallback(() => {
+  const requestAfterSign = useCallback((_success: boolean, _errorMessage?: string) => {
     setPendingSign(null)
   }, [])
 
@@ -346,6 +346,39 @@ export function WalletUIProvider({
   const requestWelcome = useCallback((account: WelcomeAccount) => {
     setPendingWelcome(account)
   }, [])
+
+  // Auto-wire UI hooks to WalletManager
+  const manager = useWalletManager()
+  const { algodClient } = useWallet()
+
+  const onConnect = useCallback(
+    (account: { evmAddress: string; algorandAddress: string }) => {
+      if (!algodClient) return
+      algodClient
+        .accountInformation(account.algorandAddress)
+        .do()
+        .then((info) => {
+          if (Number(info.amount) === 0) {
+            requestWelcome(account)
+          }
+        })
+        .catch(() => {
+          requestWelcome(account)
+        })
+    },
+    [algodClient, requestWelcome],
+  )
+
+  useEffect(() => {
+    manager.registerUIHook('onBeforeSign', requestBeforeSign)
+    manager.registerUIHook('onAfterSign', requestAfterSign)
+    manager.registerUIHook('onConnect', onConnect)
+    return () => {
+      manager.unregisterUIHook('onBeforeSign')
+      manager.unregisterUIHook('onAfterSign')
+      manager.unregisterUIHook('onConnect')
+    }
+  }, [manager, requestBeforeSign, requestAfterSign, onConnect])
 
   const handleApproveSign = useCallback(() => {
     pendingSign?.resolve()

@@ -1,0 +1,29 @@
+{
+  "name": "@txnlab/use-wallet-ui-extension",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Liquid Wallet Companion browser extension",
+  "type": "module",
+  "scripts": {
+    "build": "rm -rf dist && vite build -c vite.config.content.ts && vite build -c vite.config.background.ts && vite build && node scripts/build-manifests.js",
+    "dev": "vite build --watch",
+    "build:firefox": "pnpm build && cp dist/manifest.firefox.json dist/manifest.json",
+    "build:content": "vite build -c vite.config.content.ts",
+    "build:background": "vite build -c vite.config.background.ts",
+    "build:popup": "vite build",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@types/chrome": "0.0.304",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "tailwindcss": "4.1.18",
+    "@tailwindcss/vite": "4.1.18",
+    "typescript": "5.9.3",
+    "vite": "6.4.1"
+  }
+}

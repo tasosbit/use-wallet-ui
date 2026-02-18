@@ -4,12 +4,57 @@ import algosdk from 'algosdk'
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 
 import { BeforeSignDialog } from '../components/BeforeSignDialog'
+import { ExtensionSignIndicator } from '../components/ExtensionSignIndicator'
 import { WelcomeDialog } from '../components/WelcomeDialog'
 import { useResolvedTheme, type Theme, type ResolvedTheme } from '../hooks/useResolvedTheme'
 import { decodeTransactions, TransactionDanger, type DecodedTransaction } from '../utils/decodeTransactions'
 
 import type { NfdLookupResponse, NfdView } from '../hooks/useNfd'
 import { LiquidEvmSdk } from 'liquid-accounts-evm'
+
+// Extension message constants (duplicated from extension package to avoid cross-dependency)
+const EXT_MSG = {
+  PING: 'LIQUID_WALLET_COMP_EXT_PING',
+  PONG: 'LIQUID_WALLET_COMP_EXT_PONG',
+  ANNOUNCE: 'LIQUID_WALLET_COMP_EXT_ANNOUNCE',
+  SIGN_REQUEST: 'LIQUID_WALLET_COMP_EXT_SIGN_REQUEST',
+  SIGN_RESPONSE: 'LIQUID_WALLET_COMP_EXT_SIGN_RESPONSE',
+  SIGN_COMPLETE: 'LIQUID_WALLET_COMP_EXT_SIGN_COMPLETE',
+} as const
+
+const EXT_SOURCE = {
+  PAGE: 'use-wallet-ui',
+  CONTENT: 'liquid-wallet-companion-content',
+  POPUP: 'liquid-wallet-companion-popup',
+} as const
+
+interface SerializableDecodedTransaction {
+  index: number
+  type: string
+  typeLabel: string
+  sender: string
+  senderShort: string
+  receiver?: string
+  receiverShort?: string
+  amount?: string
+  rawAmount?: string
+  assetIndex?: number
+  appIndex?: number
+  rekeyTo?: string
+  rekeyToShort?: string
+  closeRemainderTo?: string
+  closeRemainderToShort?: string
+  freezeTarget?: string
+  freezeTargetShort?: string
+  isFreezing?: boolean
+}
+
+function toSerializableTxn(txn: DecodedTransaction): SerializableDecodedTransaction {
+  return {
+    ...txn,
+    rawAmount: txn.rawAmount !== undefined ? txn.rawAmount.toString() : undefined,
+  }
+}
 
 // CSS custom properties for theming - injected via JavaScript to avoid requiring CSS imports
 const THEME_STYLES_ID = 'wallet-ui-theme-styles'
@@ -319,9 +364,59 @@ export function WalletUIProvider({
     injectThemeStyles()
   }, [])
 
+  // Extension companion detection
+  const [extensionDetected, setExtensionDetected] = useState(false)
+  const pendingRequestIdRef = useRef<string | null>(null)
+
+  // Extension detection: ping on mount and listen for pong/announce
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.source !== window || !event.data?.type) return
+      const { type, source } = event.data
+      if (source !== EXT_SOURCE.CONTENT) return
+
+      if (type === EXT_MSG.PONG || type === EXT_MSG.ANNOUNCE) {
+        setExtensionDetected(true)
+      }
+    }
+
+    window.addEventListener('message', handleMessage)
+
+    // Send ping to detect extension
+    window.postMessage({ type: EXT_MSG.PING, source: EXT_SOURCE.PAGE }, '*')
+
+    return () => window.removeEventListener('message', handleMessage)
+  }, [])
+
   // Before-sign dialog state
   const [pendingSign, setPendingSign] = useState<PendingSignRequest | null>(null)
   const [showSignDialog, setShowSignDialog] = useState(false)
+
+  // Listen for extension sign responses
+  useEffect(() => {
+    if (!extensionDetected) return
+
+    const handleMessage = (event: MessageEvent) => {
+      if (event.source !== window || !event.data?.type) return
+      if (event.data.type !== EXT_MSG.SIGN_RESPONSE) return
+      // Accept responses from both popup source and content source (relay)
+      if (event.data.source !== EXT_SOURCE.POPUP && event.data.source !== EXT_SOURCE.CONTENT) return
+      if (!pendingRequestIdRef.current || event.data.requestId !== pendingRequestIdRef.current) return
+
+      if (event.data.approved) {
+        // Keep pendingRequestIdRef so requestAfterSign can send SIGN_COMPLETE
+        pendingSign?.resolve()
+      } else {
+        pendingSign?.reject(new Error('User rejected signing from extension'))
+        setPendingSign(null)
+        pendingRequestIdRef.current = null
+      }
+      setShowSignDialog(false)
+    }
+
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [extensionDetected, pendingSign])
 
   const requestBeforeSign = useCallback((txnGroup: algosdk.Transaction[] | Uint8Array[]) => {
     return new Promise<void>((resolve, reject) => {
@@ -330,18 +425,47 @@ export function WalletUIProvider({
       const message = `0x${Buffer.from(messageRaw).toString('hex')}`
       setPendingSign({ transactions: decodedTransactions, message, dangerous, resolve, reject })
       setShowSignDialog(true)
+
+      if (extensionDetected) {
+        const requestId = crypto.randomUUID()
+        pendingRequestIdRef.current = requestId
+        window.postMessage(
+          {
+            type: EXT_MSG.SIGN_REQUEST,
+            source: EXT_SOURCE.PAGE,
+            requestId,
+            transactions: decodedTransactions.map(toSerializableTxn),
+            message,
+            dangerous,
+            walletName: walletNameRef.current,
+          },
+          '*',
+        )
+      }
+
       if (!dangerous) {
         setTimeout(() => {
           resolve()
         }, 2500)
       }
     })
-  }, [])
+  }, [extensionDetected])
 
   const requestAfterSign = useCallback((_success: boolean, _errorMessage?: string) => {
+    if (extensionDetected && pendingRequestIdRef.current) {
+      window.postMessage(
+        {
+          type: EXT_MSG.SIGN_COMPLETE,
+          source: EXT_SOURCE.PAGE,
+          requestId: pendingRequestIdRef.current,
+        },
+        '*',
+      )
+      pendingRequestIdRef.current = null
+    }
     setPendingSign(null)
     setShowSignDialog(false)
-  }, [])
+  }, [extensionDetected])
 
   // Welcome dialog state
   const [pendingWelcome, setPendingWelcome] = useState<WelcomeAccount | null>(null)
@@ -352,7 +476,11 @@ export function WalletUIProvider({
 
   // Auto-wire UI hooks to WalletManager
   const manager = useWalletManager()
-  const { algodClient } = useWallet()
+  const { algodClient, activeWallet } = useWallet()
+
+  // Keep wallet name in a ref so requestBeforeSign doesn't depend on it
+  const walletNameRef = useRef<string | undefined>(undefined)
+  walletNameRef.current = activeWallet?.metadata?.name
 
   const onConnect = useCallback(
     (account: { evmAddress: string; algorandAddress: string }) => {
@@ -417,7 +545,10 @@ export function WalletUIProvider({
         {/* Internal prefetcher component that runs automatically */}
         <WalletAccountsPrefetcher enabled={enablePrefetching} nfdView={prefetchNfdView} />
         {children}
-        {showSignDialog && (
+        {showSignDialog && extensionDetected && (
+          <ExtensionSignIndicator transactionCount={pendingSign!.transactions.length} dangerous={pendingSign!.dangerous} onReject={handleRejectSign} />
+        )}
+        {showSignDialog && !extensionDetected && (
           <BeforeSignDialog transactions={pendingSign!.transactions} message={pendingSign!.message} dangerous={pendingSign!.dangerous} onApprove={handleApproveSign} onReject={handleRejectSign} onClose={() => setShowSignDialog(false)} />
         )}
         {pendingWelcome && (

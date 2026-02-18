@@ -1,0 +1,23 @@
+{
+  "name": "@d13co/liquid-ui",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Shared transaction UI components for use-wallet-ui and Liquid Wallet Companion",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": ">=5",
+    "react": "^18 || ^19"
+  },
+  "devDependencies": {
+    "@tanstack/react-query": "5.90.21",
+    "@types/react": "19.2.14",
+    "react": "19.2.4",
+    "typescript": "5.9.3"
+  }
+}

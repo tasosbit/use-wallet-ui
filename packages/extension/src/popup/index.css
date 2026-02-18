@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@source "../../../../packages/liquid-ui/src";
 
 /*
   Extension popup theme - mirrored from use-wallet-ui input.css

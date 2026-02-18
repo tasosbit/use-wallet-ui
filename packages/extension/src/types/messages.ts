@@ -1,3 +1,5 @@
+import type { TransactionDanger } from '@d13co/liquid-ui'
+
 // Message type prefix
 export const MSG_PREFIX = 'LIQUID_WALLET_COMP_EXT_' as const
 
@@ -19,10 +21,9 @@ export const MessageSource = {
   BACKGROUND: 'liquid-wallet-companion-background',
 } as const
 
-// Transaction danger levels (mirrored from use-wallet-ui)
-export type TransactionDanger = 'rekey' | 'closeTo' | false
+export type { TransactionDanger }
 
-// Serializable version of DecodedTransaction (bigint -> string)
+// Serializable version of TransactionData (rawAmount as string for postMessage)
 export interface SerializableDecodedTransaction {
   index: number
   type: string
@@ -69,6 +70,8 @@ export interface SignRequestMessage {
   message: string
   dangerous: TransactionDanger
   walletName?: string
+  algodConfig?: { baseServer: string; token: string; port?: string | number }
+  rawTransactions?: string[] // base64-encoded unsigned transaction bytes
 }
 
 export interface SignResponseMessage {
@@ -97,6 +100,8 @@ export interface StoredSignRequest {
   message: string
   dangerous: TransactionDanger
   walletName?: string
+  algodConfig?: { baseServer: string; token: string; port?: string | number }
+  rawTransactions?: string[] // base64-encoded unsigned transaction bytes
   tabId: number
   origin: string
 }

@@ -246,6 +246,9 @@ importers:
 
   packages/extension:
     dependencies:
+      '@d13co/liquid-ui':
+        specifier: workspace:*
+        version: link:../liquid-ui
       react:
         specifier: 19.2.4
         version: 19.2.4
@@ -275,8 +278,26 @@ importers:
         specifier: 6.4.1
         version: 6.4.1(@types/node@22.19.11)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.7.1)
 
+  packages/liquid-ui:
+    devDependencies:
+      '@tanstack/react-query':
+        specifier: 5.90.21
+        version: 5.90.21(react@19.2.4)
+      '@types/react':
+        specifier: 19.2.14
+        version: 19.2.14
+      react:
+        specifier: 19.2.4
+        version: 19.2.4
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+
   packages/react:
     dependencies:
+      '@d13co/liquid-ui':
+        specifier: workspace:*
+        version: link:../liquid-ui
       '@floating-ui/react':
         specifier: 0.27.17
         version: 0.27.17(react-dom@19.2.4(react@19.2.4))(react@19.2.4)

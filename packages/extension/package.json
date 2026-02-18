@@ -1,5 +1,5 @@
 {
-  "name": "@txnlab/use-wallet-ui-extension",
+  "name": "@d13co/use-wallet-ui-extension",
   "version": "0.0.1",
   "private": true,
   "description": "Liquid Wallet Companion browser extension",
@@ -14,6 +14,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@d13co/liquid-ui": "workspace:*",
+    "@tanstack/react-query": "5.90.21",
+    "algosdk": "3.5.2",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },

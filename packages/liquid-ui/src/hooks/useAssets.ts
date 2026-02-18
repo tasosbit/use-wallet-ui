@@ -1,18 +1,14 @@
 import { useQueries } from '@tanstack/react-query'
-import { useWallet } from '@txnlab/use-wallet-react'
 import { useMemo } from 'react'
+import type { AssetInfo, AssetLookupClient } from '../types'
 
-export interface AssetInfo {
-  decimals: number
-  unitName: string
-}
-
-export function useAssets(assetIds: string[]): {
+export function useAssets(
+  assetIds: string[],
+  algodClient: AssetLookupClient | undefined,
+): {
   loading: boolean
   assets: Record<string, AssetInfo>
 } {
-  const { algodClient } = useWallet()
-
   const results = useQueries({
     queries: assetIds.map((id) => ({
       queryKey: ['asset', id],

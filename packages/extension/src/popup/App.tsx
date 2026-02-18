@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import algosdk from 'algosdk'
 import {
   MessageType,
   MessageSource,
@@ -6,6 +7,7 @@ import {
 } from '../types/messages'
 import type { StoredSignRequest, SignRequestMessage, SignCompleteMessage } from '../types/messages'
 import { TransactionView } from './components/TransactionView'
+import { verifyPayload } from './utils/verifyPayload'
 
 export function App() {
   const [request, setRequest] = useState<StoredSignRequest | null>(null)
@@ -36,6 +38,8 @@ export function App() {
           message: message.message,
           dangerous: message.dangerous,
           walletName: message.walletName,
+          algodConfig: message.algodConfig,
+          rawTransactions: message.rawTransactions,
           tabId: 0,
           origin: '',
         })
@@ -54,6 +58,24 @@ export function App() {
     chrome.runtime.onMessage.addListener(listener)
     return () => chrome.runtime.onMessage.removeListener(listener)
   }, [])
+
+  // Create algod client from config
+  const algodClient = useMemo(() => {
+    if (!request?.algodConfig) return undefined
+    const { baseServer, token, port } = request.algodConfig
+    return new algosdk.Algodv2(token, baseServer, port)
+  }, [request?.algodConfig])
+
+  // Verify payload against raw transactions
+  const payloadVerification = useMemo(() => {
+    if (!request?.rawTransactions) return { verified: null as boolean | null, message: request?.message ?? '' }
+    const result = verifyPayload(request.rawTransactions, request.message)
+    if (result.valid) {
+      return { verified: true, message: request.message }
+    }
+    // Invalid: use corrected message if available
+    return { verified: false, message: result.correctMessage ?? request.message }
+  }, [request?.rawTransactions, request?.message])
 
   const handleApprove = () => {
     if (!request) return
@@ -104,11 +126,13 @@ export function App() {
   return (
     <TransactionView
       transactions={request.transactions}
-      message={request.message}
+      message={payloadVerification.message}
       dangerous={request.dangerous}
       origin={request.origin}
       walletName={request.walletName}
       signing={signing}
+      algodClient={algodClient}
+      payloadVerified={payloadVerification.verified}
       onApprove={handleApprove}
       onReject={handleReject}
     />

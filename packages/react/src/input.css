@@ -15,6 +15,7 @@
 */
 
 @import 'tailwindcss/theme.css';
+@source "../../liquid-ui/src";
 
 /*
   Minimal reset for library components only.

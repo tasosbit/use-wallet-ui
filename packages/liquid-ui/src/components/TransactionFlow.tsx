@@ -1,15 +1,13 @@
-// Duplicated from use-wallet-ui BeforeSignDialog.tsx TransactionFlow
-// Will be extracted into a shared package later.
+import type { TransactionData, AssetInfo } from '../types'
+import { formatAssetAmount, assetLabel } from '../formatters'
 
-import type { SerializableDecodedTransaction } from '../../types/messages'
-import { assetLabel } from '../../utils/formatters'
-
-interface TransactionFlowProps {
-  txn: SerializableDecodedTransaction
+export interface TransactionFlowProps {
+  txn: TransactionData
+  assetInfo?: AssetInfo
   appEscrows?: Record<string, string>
 }
 
-export function TransactionFlow({ txn, appEscrows = {} }: TransactionFlowProps) {
+export function TransactionFlow({ txn, assetInfo, appEscrows = {} }: TransactionFlowProps) {
   const resolveAddr = (full: string | undefined, short: string): string =>
     (full && appEscrows[full]) || short
 
@@ -72,7 +70,7 @@ export function TransactionFlow({ txn, appEscrows = {} }: TransactionFlowProps) 
         <>
           {renderFlowLine(
             txn.senderShort,
-            `${txn.amount || '0'} ${assetLabel(txn.assetIndex)}`,
+            assetInfo ? formatAssetAmount(txn.rawAmount, assetInfo) : `${txn.amount || '0'} ${assetLabel(txn)}`,
             resolveAddr(txn.receiver, txn.receiverShort),
           )}
           {txn.closeRemainderToShort && renderRemainderLine(txn.closeRemainderToShort)}
@@ -84,7 +82,7 @@ export function TransactionFlow({ txn, appEscrows = {} }: TransactionFlowProps) 
         <>
           {renderFlowLine(
             txn.senderShort,
-            `${txn.isFreezing ? 'Freeze' : 'Unfreeze'} ${assetLabel(txn.assetIndex)}`,
+            `${txn.isFreezing ? 'Freeze' : 'Unfreeze'} ${assetLabel(txn, assetInfo)}`,
             txn.freezeTargetShort,
           )}
         </>
@@ -95,7 +93,7 @@ export function TransactionFlow({ txn, appEscrows = {} }: TransactionFlowProps) 
         <>
           {renderFlowLine(
             txn.senderShort,
-            `Configure ${txn.assetIndex ? assetLabel(txn.assetIndex) : 'NEW'}`,
+            `Configure ${txn.assetIndex ? assetLabel(txn, assetInfo) : 'NEW'}`,
             txn.senderShort,
           )}
         </>

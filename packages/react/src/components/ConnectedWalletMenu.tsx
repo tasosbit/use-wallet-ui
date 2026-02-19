@@ -17,17 +17,15 @@ import { useWallet } from '@txnlab/use-wallet-react'
 import { formatNumber, formatShortAddress } from '@txnlab/utils-ts'
 import React, { ReactElement, RefObject, useState } from 'react'
 
+import { AlgoSymbol, ManagePanel } from '@d13co/liquid-ui'
+
 import { useAccountInfo } from '../hooks/useAccountInfo'
 import { useNfd } from '../hooks/useNfd'
 import { useOptIn } from '../hooks/useOptIn'
 import { useSend } from '../hooks/useSend'
 import { useWalletUI } from '../providers/WalletUIProvider'
-
-import { AlgoSymbol } from './AlgoSymbol'
 import { ConnectedWalletButton } from './ConnectedWalletButton'
 import { NfdAvatar } from './NfdAvatar'
-import { Spinner } from './Spinner'
-import { TransactionStatus } from './TransactionStatus'
 
 // A more specific type for the children that includes ref
 type RefableElement = ReactElement & {
@@ -42,7 +40,7 @@ function ConnectedWalletMenuContent({ children }: ConnectedWalletMenuProps) {
   const { activeAddress, activeWallet } = useWallet()
   const { theme } = useWalletUI()
   const [isOpen, setIsOpen] = useState(false)
-  const [mode, setMode] = useState<'main' | 'manage' | 'opt-in' | 'send'>('main')
+  const [mode, setMode] = useState<'main' | 'manage'>('main')
   const [isCopied, setIsCopied] = useState(false)
 
   const optIn = useOptIn()
@@ -367,331 +365,15 @@ function ConnectedWalletMenuContent({ children }: ConnectedWalletMenuProps) {
                         </button>
                       </div>
                     </>
-                  ) : mode === 'manage' ? (
-                    <>
-                      {/* Manage mode header with back arrow */}
-                      <div className="flex items-center gap-2 mb-4">
-                        <button
-                          onClick={() => setMode('main')}
-                          className="-ml-1 p-1 rounded-lg hover:bg-[var(--wui-color-bg-secondary)] transition-colors text-[var(--wui-color-text-secondary)] flex items-center justify-center"
-                          title="Back"
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="20"
-                            height="20"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="m15 18-6-6 6-6" />
-                          </svg>
-                        </button>
-                        <h3 className="text-lg font-bold leading-none text-[var(--wui-color-text)] wallet-custom-font">
-                          Manage Liquid Account
-                        </h3>
-                      </div>
-
-                      {balanceDisplay}
-
-                      <div className="border-t border-[var(--wui-color-border)] mb-3" />
-
-                      {/* Manage action buttons */}
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          onClick={() => setMode('send')}
-                          className="py-2.5 px-4 bg-[var(--wui-color-bg-tertiary)] text-[var(--wui-color-text)] font-medium rounded-xl hover:brightness-90 transition-all text-sm flex items-center justify-center"
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-4 w-4 mr-1.5"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="M5 12h14" />
-                            <path d="m12 5 7 7-7 7" />
-                          </svg>
-                          Send
-                        </button>
-                        <button
-                          onClick={() => setMode('opt-in')}
-                          className="py-2.5 px-4 bg-[var(--wui-color-bg-tertiary)] text-[var(--wui-color-text)] font-medium rounded-xl hover:brightness-90 transition-all text-sm flex items-center justify-center"
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-4 w-4 mr-1.5"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="M12 5v14" />
-                            <path d="M5 12h14" />
-                          </svg>
-                          Opt In
-                        </button>
-                        <button className="py-2.5 px-4 bg-[var(--wui-color-bg-tertiary)] text-[var(--wui-color-text)] font-medium rounded-xl hover:brightness-90 transition-all text-sm flex items-center justify-center">
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-4 w-4 mr-1.5"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="M8 3l4 4-4 4" />
-                            <path d="M16 3l-4 4 4 4" />
-                            <path d="M12 7H4" />
-                            <path d="M12 7h8" />
-                            <path d="M8 21l4-4-4-4" />
-                            <path d="M16 21l-4-4 4-4" />
-                            <path d="M12 17H4" />
-                            <path d="M12 17h8" />
-                          </svg>
-                          Bridge
-                        </button>
-                        <button className="py-2.5 px-4 bg-[var(--wui-color-bg-tertiary)] text-[var(--wui-color-text)] font-medium rounded-xl hover:brightness-90 transition-all text-sm flex items-center justify-center">
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-4 w-4 mr-1.5"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <circle cx="11" cy="11" r="8" />
-                            <path d="m21 21-4.3-4.3" />
-                          </svg>
-                          Explore
-                        </button>
-                      </div>
-                    </>
-                  ) : mode === 'opt-in' ? (
-                    <>
-                      {/* Opt-in mode header */}
-                      <div className="flex items-center gap-2 mb-4">
-                        <button
-                          onClick={() => {
-                            setMode('manage')
-                            optIn.reset()
-                          }}
-                          className="-ml-1 p-1 rounded-lg hover:bg-[var(--wui-color-bg-secondary)] transition-colors text-[var(--wui-color-text-secondary)] flex items-center justify-center"
-                          title="Back"
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="20"
-                            height="20"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="m15 18-6-6 6-6" />
-                          </svg>
-                        </button>
-                        <h3 className="text-lg font-bold leading-none text-[var(--wui-color-text)] wallet-custom-font">Opt In Asset</h3>
-                      </div>
-
-                      {/* Asset ID input */}
-                      <div className="mb-4">
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          placeholder="Enter Asset ID"
-                          value={optIn.assetIdInput}
-                          onChange={(e) => optIn.setAssetIdInput(e.target.value.replace(/[^0-9]/g, ''))}
-                          className="w-full rounded-lg border border-[var(--wui-color-border)] bg-[var(--wui-color-bg-secondary)] py-2.5 px-3 text-sm text-[var(--wui-color-text)] placeholder:text-[var(--wui-color-text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--wui-color-primary)] focus:border-transparent"
-                        />
-                      </div>
-
-                      {/* Loading */}
-                      {optIn.assetLookupLoading && (
-                        <div className="flex items-center justify-center py-4 text-sm text-[var(--wui-color-text-secondary)]">
-                          <Spinner className="h-4 w-4 mr-2" />
-                          Looking up asset...
-                        </div>
-                      )}
-
-                      {/* Lookup error */}
-                      {optIn.assetLookupError && (
-                        <div className="py-3 text-center text-sm text-[var(--wui-color-danger-text)]">{optIn.assetLookupError}</div>
-                      )}
-
-                      {/* Asset result */}
-                      {optIn.assetInfo && optIn.status === 'idle' && (
-                        <div className="bg-[var(--wui-color-bg-secondary)] rounded-lg p-3">
-                          <div className="flex justify-between items-start mb-3">
-                            <div>
-                              <p className="text-sm font-medium text-[var(--wui-color-text)]">{optIn.assetInfo.name}</p>
-                              {optIn.assetInfo.unitName && (
-                                <p className="text-xs text-[var(--wui-color-text-secondary)]">{optIn.assetInfo.unitName}</p>
-                              )}
-                            </div>
-                            <span className="text-xs text-[var(--wui-color-text-tertiary)]">ID: {optIn.assetInfo.index}</span>
-                          </div>
-                          <button
-                            onClick={optIn.handleOptIn}
-                            className="w-full py-2 px-4 bg-[var(--wui-color-primary)] text-white font-medium rounded-xl hover:brightness-90 transition-all text-sm"
-                          >
-                            Opt In
-                          </button>
-                        </div>
-                      )}
-
-                      <TransactionStatus
-                        status={optIn.status}
-                        error={optIn.error}
-                        successMessage="Opted in successfully!"
-                        onRetry={optIn.retry}
-                      />
-                    </>
                   ) : (
-                    <>
-                      {/* Send mode header */}
-                      <div className="flex items-center gap-2 mb-4">
-                        <button
-                          onClick={() => {
-                            setMode('manage')
-                            send.reset()
-                          }}
-                          className="-ml-1 p-1 rounded-lg hover:bg-[var(--wui-color-bg-secondary)] transition-colors text-[var(--wui-color-text-secondary)] flex items-center justify-center"
-                          title="Back"
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="20"
-                            height="20"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="m15 18-6-6 6-6" />
-                          </svg>
-                        </button>
-                        <h3 className="text-lg font-bold leading-none text-[var(--wui-color-text)] wallet-custom-font">Send</h3>
-                      </div>
-
-                      {/* ALGO / Asset toggle */}
-                      <div className="flex mb-4 bg-[var(--wui-color-bg-secondary)] rounded-lg p-1">
-                        <button
-                          onClick={() => send.setSendType('algo')}
-                          className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
-                            send.sendType === 'algo'
-                              ? 'bg-[var(--wui-color-bg)] text-[var(--wui-color-text)] shadow-sm'
-                              : 'text-[var(--wui-color-text-secondary)] hover:text-[var(--wui-color-text)]'
-                          }`}
-                        >
-                          ALGO
-                        </button>
-                        <button
-                          onClick={() => send.setSendType('asa')}
-                          className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
-                            send.sendType === 'asa'
-                              ? 'bg-[var(--wui-color-bg)] text-[var(--wui-color-text)] shadow-sm'
-                              : 'text-[var(--wui-color-text-secondary)] hover:text-[var(--wui-color-text)]'
-                          }`}
-                        >
-                          Asset
-                        </button>
-                      </div>
-
-                      {/* Asset ID input (ASA mode only) */}
-                      {send.sendType === 'asa' && (
-                        <div className="mb-3">
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            pattern="[0-9]*"
-                            placeholder="Asset ID"
-                            value={send.assetIdInput}
-                            onChange={(e) => send.setAssetIdInput(e.target.value.replace(/[^0-9]/g, ''))}
-                            className="w-full rounded-lg border border-[var(--wui-color-border)] bg-[var(--wui-color-bg-secondary)] py-2.5 px-3 text-sm text-[var(--wui-color-text)] placeholder:text-[var(--wui-color-text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--wui-color-primary)] focus:border-transparent"
-                          />
-                          {send.assetLookupLoading && (
-                            <div className="flex items-center mt-2 text-xs text-[var(--wui-color-text-secondary)]">
-                              <Spinner className="h-3 w-3 mr-1.5" />
-                              Looking up asset...
-                            </div>
-                          )}
-                          {send.assetLookupError && (
-                            <p className="mt-2 text-xs text-[var(--wui-color-danger-text)]">{send.assetLookupError}</p>
-                          )}
-                          {send.assetInfo && (
-                            <div className="mt-2 flex items-center justify-between text-xs text-[var(--wui-color-text-secondary)] bg-[var(--wui-color-bg-secondary)] rounded-md px-2 py-1.5">
-                              <span className="font-medium text-[var(--wui-color-text)]">{send.assetInfo.name}</span>
-                              {send.assetInfo.unitName && <span>{send.assetInfo.unitName}</span>}
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Receiver address */}
-                      <div className="mb-3">
-                        <input
-                          type="text"
-                          placeholder="Receiver address"
-                          value={send.receiver}
-                          onChange={(e) => send.setReceiver(e.target.value)}
-                          className="w-full rounded-lg border border-[var(--wui-color-border)] bg-[var(--wui-color-bg-secondary)] py-2.5 px-3 text-sm text-[var(--wui-color-text)] placeholder:text-[var(--wui-color-text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--wui-color-primary)] focus:border-transparent"
-                        />
-                      </div>
-
-                      {/* Amount */}
-                      <div className="mb-4">
-                        <input
-                          type="text"
-                          inputMode="decimal"
-                          placeholder={
-                            send.sendType === 'algo'
-                              ? 'Amount (ALGO)'
-                              : send.assetInfo
-                                ? `Amount (${send.assetInfo.unitName || send.assetInfo.name})`
-                                : 'Amount'
-                          }
-                          value={send.amount}
-                          onChange={(e) => send.setAmount(e.target.value.replace(/[^0-9.]/g, ''))}
-                          className="w-full rounded-lg border border-[var(--wui-color-border)] bg-[var(--wui-color-bg-secondary)] py-2.5 px-3 text-sm text-[var(--wui-color-text)] placeholder:text-[var(--wui-color-text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--wui-color-primary)] focus:border-transparent"
-                        />
-                      </div>
-
-                      {/* Send button */}
-                      {send.status === 'idle' && (
-                        <button
-                          onClick={send.handleSend}
-                          disabled={!send.receiver || !send.amount || (send.sendType === 'asa' && !send.assetInfo)}
-                          className="w-full py-2.5 px-4 bg-[var(--wui-color-primary)] text-white font-medium rounded-xl hover:brightness-90 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          Send {send.sendType === 'algo' ? 'ALGO' : send.assetInfo?.unitName || 'Asset'}
-                        </button>
-                      )}
-
-                      <TransactionStatus
-                        status={send.status}
-                        error={send.error}
-                        successMessage="Sent successfully!"
-                        onRetry={send.retry}
-                      />
-                    </>
+                    <ManagePanel
+                      displayBalance={displayBalance}
+                      showAvailableBalance={showAvailableBalance}
+                      onToggleBalance={toggleBalanceView}
+                      onBack={() => setMode('main')}
+                      send={send}
+                      optIn={optIn}
+                    />
                   )}
                 </div>
               </div>

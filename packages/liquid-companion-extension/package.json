@@ -1,5 +1,5 @@
 {
-  "name": "@d13co/use-wallet-ui-extension",
+  "name": "@d13co/liquid-companion-extension",
   "version": "0.0.1",
   "private": true,
   "description": "Liquid Wallet Companion browser extension",

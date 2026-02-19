@@ -244,11 +244,17 @@ importers:
         specifier: ^0.25.0
         version: 0.25.0(rollup@4.55.1)(vite@6.4.1(@types/node@22.19.11)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.7.1))
 
-  packages/extension:
+  packages/liquid-companion-extension:
     dependencies:
       '@d13co/liquid-ui':
         specifier: workspace:*
         version: link:../liquid-ui
+      '@tanstack/react-query':
+        specifier: 5.90.21
+        version: 5.90.21(react@19.2.4)
+      algosdk:
+        specifier: 3.5.2
+        version: 3.5.2
       react:
         specifier: 19.2.4
         version: 19.2.4

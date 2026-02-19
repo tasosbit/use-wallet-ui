@@ -6,4 +6,4 @@ type = "sdk"
 name = 'use-wallet-ui'
 
 [project.run]
-build = { commands = ['npm run build'], description = 'Build use-wallet-ui' }
+build = { commands = ['pnpm run build'], description = 'Build use-wallet-ui' }

@@ -3,12 +3,12 @@ import {
   WalletId,
   WalletManager,
   WalletProvider,
-} from '@txnlab/use-wallet-react'
+} from '@d13co/use-wallet-react'
 import {
   WalletUIProvider,
   WalletButton,
   type Theme,
-} from '@txnlab/use-wallet-ui-react'
+} from '@d13co/use-wallet-ui-react'
 import { useState, useEffect } from 'react'
 
 import { WalletInfo } from './components/WalletInfo'
@@ -104,7 +104,7 @@ function App() {
                 A simple example demonstrating wallet connection, NFD profile
                 integration, and balance display using the{' '}
                 <code className="text-sm bg-gray-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
-                  @txnlab/use-wallet-ui-react
+                  @d13co/use-wallet-ui-react
                 </code>{' '}
                 package.
               </p>

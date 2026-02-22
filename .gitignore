@@ -4,6 +4,8 @@ node_modules/
 
 # Build output
 dist/
+dist-chrome/
+dist-firefox/
 build/
 *.tsbuildinfo
 

@@ -1,18 +1,18 @@
 {
-  "name": "@txnlab/use-wallet-ui-monorepo",
+  "name": "@d13co/use-wallet-ui-monorepo",
   "private": true,
   "description": "Monorepo for use-wallet UI and related packages",
   "type": "module",
   "scripts": {
-    "build": "pnpm --filter @txnlab/use-wallet-ui-react build && pnpm --filter @d13co/liquid-companion-extension build",
-    "build:examples": "pnpm --filter @txnlab/use-wallet-ui-react-example build",
+    "build": "pnpm --filter @d13co/use-wallet-ui-react build && pnpm --filter @d13co/liquid-companion-extension build",
+    "build:examples": "pnpm --filter @d13co/use-wallet-ui-react-example build",
     "test": "pnpm -r test",
-    "test:e2e": "pnpm --filter @txnlab/use-wallet-ui-e2e e2e",
-    "test:e2e:all": "pnpm --filter @txnlab/use-wallet-ui-e2e e2e:all",
-    "test:e2e:ui": "pnpm --filter @txnlab/use-wallet-ui-e2e e2e:ui",
-    "test:e2e:headed": "pnpm --filter @txnlab/use-wallet-ui-e2e e2e:headed",
-    "test:e2e:update": "pnpm --filter @txnlab/use-wallet-ui-e2e e2e:update",
-    "test:e2e:update:docker": "pnpm --filter @txnlab/use-wallet-ui-e2e e2e:update:docker",
+    "test:e2e": "pnpm --filter @d13co/use-wallet-ui-e2e e2e",
+    "test:e2e:all": "pnpm --filter @d13co/use-wallet-ui-e2e e2e:all",
+    "test:e2e:ui": "pnpm --filter @d13co/use-wallet-ui-e2e e2e:ui",
+    "test:e2e:headed": "pnpm --filter @d13co/use-wallet-ui-e2e e2e:headed",
+    "test:e2e:update": "pnpm --filter @d13co/use-wallet-ui-e2e e2e:update",
+    "test:e2e:update:docker": "pnpm --filter @d13co/use-wallet-ui-e2e e2e:update:docker",
     "lint": "pnpm -r lint",
     "format": "pnpm -r format",
     "typecheck": "pnpm -r typecheck",
@@ -64,7 +64,7 @@
   },
   "pnpm": {
     "overrides": {
-      "@txnlab/use-wallet-ui-react": "workspace:*"
+      "@d13co/use-wallet-ui-react": "workspace:*"
     },
     "onlyBuiltDependencies": [
       "@parcel/watcher",
@@ -75,6 +75,6 @@
     ]
   },
   "dependencies": {
-    "@txnlab/use-wallet-react": "link:../use-wallet/packages/use-wallet-react"
+    "@d13co/use-wallet-react": "link:../use-wallet/packages/use-wallet-react"
   }
 }

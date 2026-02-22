@@ -13,7 +13,7 @@ import {
 } from '@floating-ui/react'
 import { Label, Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headlessui/react'
 import { QueryClientProvider } from '@tanstack/react-query'
-import { useWallet } from '@txnlab/use-wallet-react'
+import { useWallet } from '@d13co/use-wallet-react'
 import { formatNumber, formatShortAddress } from '@txnlab/utils-ts'
 import React, { ReactElement, RefObject, useState } from 'react'
 

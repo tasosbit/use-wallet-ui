@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query'
-import { useWallet, useWalletManager, useNetwork } from '@txnlab/use-wallet-react'
+import { useWallet, useWalletManager, useNetwork } from '@d13co/use-wallet-react'
 import algosdk from 'algosdk'
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 

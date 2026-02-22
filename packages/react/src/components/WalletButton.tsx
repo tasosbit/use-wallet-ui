@@ -1,4 +1,4 @@
-import { useWallet } from '@txnlab/use-wallet-react'
+import { useWallet } from '@d13co/use-wallet-react'
 import React from 'react'
 
 import { ConnectedWalletButton } from './ConnectedWalletButton'

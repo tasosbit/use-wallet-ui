@@ -1,4 +1,4 @@
-import { useWallet } from '@txnlab/use-wallet-react'
+import { useWallet } from '@d13co/use-wallet-react'
 import algosdk from 'algosdk'
 import { useCallback, useState } from 'react'
 

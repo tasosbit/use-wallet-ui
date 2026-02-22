@@ -3,17 +3,17 @@ import {
   WalletId,
   WalletManager,
   WalletProvider,
-} from '@txnlab/use-wallet-react'
+} from '@d13co/use-wallet-react'
 import {
   WalletButton,
   WalletUIProvider,
   type Theme,
-} from '@txnlab/use-wallet-ui-react'
+} from '@d13co/use-wallet-ui-react'
 import { useState, useEffect } from 'react'
 
 import { WalletInfo } from './components/WalletInfo'
 
-import '@txnlab/use-wallet-ui-react/dist/style.css' // Import the pre-built CSS file
+import '@d13co/use-wallet-ui-react/dist/style.css' // Import the pre-built CSS file
 import './App.css'
 
 const walletManager = new WalletManager({
@@ -102,7 +102,7 @@ function App() {
               <p className="description">
                 A simple example demonstrating wallet connection, NFD profile
                 integration, and balance display using the{' '}
-                <code className="code-block">@txnlab/use-wallet-ui-react</code>{' '}
+                <code className="code-block">@d13co/use-wallet-ui-react</code>{' '}
                 package.
               </p>
               <p className="theme-info">

@@ -10,7 +10,7 @@ import {
   useMergeRefs,
   useId,
 } from '@floating-ui/react'
-import { useWallet } from '@txnlab/use-wallet-react'
+import { useWallet } from '@d13co/use-wallet-react'
 import React, { ReactElement, RefObject, useState } from 'react'
 
 import { useWalletUI } from '../providers/WalletUIProvider'
@@ -18,7 +18,7 @@ import { useWalletUI } from '../providers/WalletUIProvider'
 import { ConnectWalletButton } from './ConnectWalletButton'
 import { WalletList } from './WalletList'
 
-import type { Wallet } from '@txnlab/use-wallet-react'
+import type { Wallet } from '@d13co/use-wallet-react'
 
 // A more specific type for the children that includes ref
 type RefableElement = ReactElement & {

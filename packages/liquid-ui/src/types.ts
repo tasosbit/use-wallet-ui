@@ -30,6 +30,7 @@ export type TransactionDanger = 'rekey' | 'closeTo' | false
 
 export interface AssetInfo {
   decimals: number
+  name: string
   unitName: string
 }
 
@@ -38,5 +39,5 @@ export interface AssetInfo {
  * Avoids requiring algosdk as a dependency.
  */
 export interface AssetLookupClient {
-  getAssetByID(id: number): { do(): Promise<{ params: { decimals: number; unitName?: string } }> }
+  getAssetByID(id: number): { do(): Promise<{ params: { decimals: number; name?: string; unitName?: string } }> }
 }

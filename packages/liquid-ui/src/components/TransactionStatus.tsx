@@ -7,9 +7,16 @@ interface TransactionStatusProps {
   error: string | null
   successMessage: string
   onRetry: () => void
+  txId?: string | null
+  explorerUrl?: string | null
 }
 
-export function TransactionStatus({ status, error, successMessage, onRetry }: TransactionStatusProps) {
+function truncateTxId(txId: string): string {
+  if (txId.length <= 12) return txId
+  return `${txId.slice(0, 6)}...${txId.slice(-4)}`
+}
+
+export function TransactionStatus({ status, error, successMessage, onRetry, txId, explorerUrl }: TransactionStatusProps) {
   if (status === 'idle') return null
 
   if (status === 'signing') {
@@ -46,6 +53,23 @@ export function TransactionStatus({ status, error, successMessage, onRetry }: Tr
           />
         </svg>
         <p className="text-sm font-medium text-[var(--wui-color-text)]">{successMessage}</p>
+        {txId && (
+          <p className="mt-1.5 text-xs text-[var(--wui-color-text-tertiary)]">
+            TX:{' '}
+            {explorerUrl ? (
+              <a
+                href={explorerUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[var(--wui-color-primary)] hover:underline"
+              >
+                {truncateTxId(txId)}
+              </a>
+            ) : (
+              <span className="font-mono">{truncateTxId(txId)}</span>
+            )}
+          </p>
+        )}
       </div>
     )
   }

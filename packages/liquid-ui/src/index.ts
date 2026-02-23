@@ -20,9 +20,13 @@ export type { OptInPanelProps } from './components/OptInPanel'
 export { SendPanel } from './components/SendPanel'
 export type { SendPanelProps } from './components/SendPanel'
 export { ManagePanel } from './components/ManagePanel'
-export type { ManagePanelProps } from './components/ManagePanel'
+export type { ManagePanelProps, AssetHoldingDisplay } from './components/ManagePanel'
 export { WelcomeContent } from './components/WelcomeContent'
 export type { WelcomeContentProps } from './components/WelcomeContent'
+
+// Cache
+export { AssetCache } from './cache/assetCache'
+export type { CachedAsset } from './cache/assetCache'
 
 // Hooks
 export { useAssets } from './hooks/useAssets'

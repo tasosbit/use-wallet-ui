@@ -16,6 +16,7 @@ export function useAssets(
         const result = await algodClient!.getAssetByID(Number(id)).do()
         return {
           decimals: result.params.decimals,
+          name: result.params.name || '',
           unitName: result.params.unitName || '',
         }
       },

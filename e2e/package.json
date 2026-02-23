@@ -1,5 +1,5 @@
 {
-  "name": "@d13co/use-wallet-ui-e2e",
+  "name": "@txnlab/use-wallet-ui-e2e",
   "private": true,
   "type": "module",
   "scripts": {

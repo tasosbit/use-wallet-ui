@@ -1,4 +1,4 @@
-import type { Wallet } from '@d13co/use-wallet-react'
+import type { Wallet } from '@txnlab/use-wallet-react'
 
 export interface WalletListProps {
   wallets: Wallet[]

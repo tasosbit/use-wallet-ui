@@ -1,5 +1,5 @@
 {
-  "name": "@d13co/use-wallet-ui-react",
+  "name": "@txnlab/use-wallet-ui-react",
   "version": "1.0.1",
   "description": "React components for use-wallet UI",
   "type": "module",
@@ -64,27 +64,30 @@
     "generate:css": "npx @tailwindcss/cli -c ./tailwind.config.js -i ./src/input.css -o ./dist/style.css && node ./scripts/post-process-css.js"
   },
   "peerDependencies": {
-    "@d13co/use-wallet-react": "^4.0.1",
     "@d13co/liquid-ui": "workspace:*",
+    "@txnlab/use-wallet-react": "^4.0.1",
     "liquid-accounts-evm": ">=0.0.1",
     "react": "^18 || ^19",
     "react-dom": "^18 || ^19"
   },
   "dependencies": {
+    "@algorandfoundation/algokit-utils": "^9.2.0",
+    "@d13co/open-in": "^0.1.0",
     "@floating-ui/react": "0.27.17",
     "@headlessui/react": "2.2.9",
     "@tanstack/react-query": "5.90.21",
     "@txnlab/utils-ts": "0.1.0",
+    "abel-ghost-sdk": "^0.0.5",
     "clsx": "2.1.1",
     "tailwind-merge": "3.4.1"
   },
   "devDependencies": {
-    "liquid-accounts-evm": "link:../../../evm-sdk",
     "@tailwindcss/cli": "4.1.18",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "@vitest/coverage-v8": "3.2.4",
     "algosdk": "3.5.2",
+    "liquid-accounts-evm": "link:../../../evm-sdk",
     "publint": "0.3.17",
     "react": "19.2.4",
     "react-dom": "19.2.4",

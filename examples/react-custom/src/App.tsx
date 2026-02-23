@@ -4,19 +4,19 @@ import {
   WalletManager,
   WalletProvider,
   useWallet,
-} from '@d13co/use-wallet-react'
+} from '@txnlab/use-wallet-react'
 import {
   WalletButton,
   WalletUIProvider,
   ConnectWalletMenu,
   ConnectedWalletMenu,
   type Theme,
-} from '@d13co/use-wallet-ui-react'
+} from '@txnlab/use-wallet-ui-react'
 import { formatShortAddress } from '@txnlab/utils-ts'
 import { useState, useEffect } from 'react'
 
 // Import pre-built CSS (this is the CSS-only approach, no Tailwind required)
-import '@d13co/use-wallet-ui-react/dist/style.css'
+import '@txnlab/use-wallet-ui-react/dist/style.css'
 import './App.css'
 
 const walletManager = new WalletManager({
@@ -284,7 +284,7 @@ function App() {
 import {
   ConnectWalletMenu,
   ConnectedWalletMenu
-} from '@d13co/use-wallet-ui-react'
+} from '@txnlab/use-wallet-ui-react'
 
 function CustomTriggerButton() {
   const { activeAddress } = useWallet()

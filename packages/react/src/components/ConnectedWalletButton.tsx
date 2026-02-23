@@ -1,4 +1,4 @@
-import { useWallet } from '@d13co/use-wallet-react'
+import { useWallet } from '@txnlab/use-wallet-react'
 import { formatShortAddress } from '@txnlab/utils-ts'
 import React from 'react'
 

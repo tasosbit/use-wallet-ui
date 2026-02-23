@@ -1,25 +1,27 @@
+import { getOpenInEntries } from '@d13co/open-in'
+import { useNetwork, useWallet } from '@txnlab/use-wallet-react'
 import {
-  useFloating,
-  useClick,
-  useDismiss,
-  useInteractions,
+  autoUpdate,
+  flip,
   FloatingFocusManager,
   FloatingPortal,
   offset,
-  flip,
   shift,
-  autoUpdate,
+  useClick,
+  useDismiss,
+  useFloating,
   useId,
+  useInteractions,
 } from '@floating-ui/react'
 import { Label, Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headlessui/react'
-import { QueryClientProvider } from '@tanstack/react-query'
-import { useWallet } from '@d13co/use-wallet-react'
+import { QueryClientProvider, useIsFetching, useQueryClient } from '@tanstack/react-query'
 import { formatNumber, formatShortAddress } from '@txnlab/utils-ts'
 import React, { ReactElement, RefObject, useState } from 'react'
 
-import { AlgoSymbol, ManagePanel } from '@d13co/liquid-ui'
+import { AlgoSymbol, ManagePanel, useAssets, type AssetHoldingDisplay } from '@d13co/liquid-ui'
 
 import { useAccountInfo } from '../hooks/useAccountInfo'
+import { useAssetRegistry } from '../hooks/useAssetRegistry'
 import { useNfd } from '../hooks/useNfd'
 import { useOptIn } from '../hooks/useOptIn'
 import { useSend } from '../hooks/useSend'
@@ -37,13 +39,16 @@ export interface ConnectedWalletMenuProps {
 }
 
 function ConnectedWalletMenuContent({ children }: ConnectedWalletMenuProps) {
-  const { activeAddress, activeWallet } = useWallet()
+  const { activeAddress, activeWallet, algodClient } = useWallet()
   const { theme } = useWalletUI()
+  const rqClient = useQueryClient()
+  const isFetching = useIsFetching()
   const [isOpen, setIsOpen] = useState(false)
   const [mode, setMode] = useState<'main' | 'manage'>('main')
   const [isCopied, setIsCopied] = useState(false)
 
-  const optIn = useOptIn()
+  const { activeNetwork } = useNetwork()
+  const registry = useAssetRegistry()
   const send = useSend()
 
   const [showAvailableBalance, setShowAvailableBalance] = useState(() => {
@@ -70,6 +75,55 @@ function ConnectedWalletMenuContent({ children }: ConnectedWalletMenuProps) {
   }, [accountInfo])
 
   const displayBalance = showAvailableBalance ? availableBalance : totalBalance
+
+  // All opted-in asset holdings (including zero balance)
+  const allHoldings = React.useMemo(() => {
+    if (!accountInfo?.assets) return []
+    return accountInfo.assets
+  }, [accountInfo])
+
+  const assetIds = React.useMemo(() => allHoldings.map((a) => String(a.assetId)), [allHoldings])
+
+  const optedInAssetIds = React.useMemo(() => new Set(allHoldings.map((a) => Number(a.assetId))), [allHoldings])
+
+  // Get EVM controller address from account metadata for Liquid EVM wallets
+  const evmAddress = React.useMemo(() => {
+    return (activeWallet?.activeAccount?.metadata?.evmAddress as string) ?? null
+  }, [activeWallet])
+
+  const optIn = useOptIn(registry, optedInAssetIds)
+
+  const { assets: assetInfoMap } = useAssets(assetIds, algodClient as any)
+
+  const assetHoldings = React.useMemo((): AssetHoldingDisplay[] => {
+    return allHoldings
+      .map((holding) => {
+        const info = assetInfoMap[String(holding.assetId)]
+        if (!info) return null
+        const raw = BigInt(holding.amount)
+        let amount: string
+        if (info.decimals === 0) {
+          amount = raw.toString()
+        } else {
+          const divisor = 10n ** BigInt(info.decimals)
+          const whole = raw / divisor
+          const remainder = raw % divisor
+          if (remainder === 0n) {
+            amount = whole.toString()
+          } else {
+            const frac = remainder.toString().padStart(info.decimals, '0').replace(/0+$/, '')
+            amount = `${whole}.${frac}`
+          }
+        }
+        return {
+          assetId: Number(holding.assetId),
+          name: info.name || `ASA#${holding.assetId}`,
+          unitName: info.unitName,
+          amount,
+        }
+      })
+      .filter((a): a is AssetHoldingDisplay => a !== null)
+  }, [allHoldings, assetInfoMap])
 
   const { refs, floatingStyles, context } = useFloating({
     open: isOpen,
@@ -123,6 +177,27 @@ function ConnectedWalletMenuContent({ children }: ConnectedWalletMenuProps) {
     localStorage.setItem('uwui:balance-preference', newValue ? 'available' : 'total')
   }
 
+  const getTxExplorerUrl = React.useCallback(
+    (txId: string | null) => {
+      if (!txId || !activeNetwork) return null
+      const entries = getOpenInEntries(activeNetwork as any, 'transaction')
+      const first = entries[0]
+      if (!first) return null
+      return first.getUrl(activeNetwork as any, 'transaction', txId)
+    },
+    [activeNetwork],
+  )
+
+  const handleExplore = React.useMemo(() => {
+    if (!activeAddress || !activeNetwork) return undefined
+    const entries = getOpenInEntries(activeNetwork as any, 'account')
+    const first = entries[0]
+    if (!first) return undefined
+    const url = first.getUrl(activeNetwork as any, 'account', activeAddress)
+    if (!url) return undefined
+    return () => window.open(url, '_blank', 'noopener,noreferrer')
+  }, [activeAddress, activeNetwork])
+
   // Shared balance display with toggle
   const balanceDisplay = (
     <div className="mb-4 bg-[var(--wui-color-bg-secondary)] rounded-lg p-3">
@@ -171,7 +246,7 @@ function ConnectedWalletMenuContent({ children }: ConnectedWalletMenuProps) {
             <div data-wallet-theme data-wallet-ui data-theme={dataTheme}>
               <div
                 ref={refs.setFloating}
-                style={{ ...floatingStyles, width: mode === 'main' ? 320 : 384 }}
+                style={{ ...floatingStyles, width: mode === 'main' ? 320 : 'min(420px, 95vw)' }}
                 {...getFloatingProps()}
                 role="menu"
                 aria-labelledby={labelId}
@@ -311,7 +386,18 @@ function ConnectedWalletMenuContent({ children }: ConnectedWalletMenuProps) {
                                   className="flex-1 py-2 px-4 bg-[var(--wui-color-bg-tertiary)] text-[var(--wui-color-text-secondary)] font-medium rounded-xl hover:brightness-90 transition-all text-sm flex items-center justify-center"
                                   title="Manage Liquid Account"
                                 >
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg>
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-4 w-4 mr-1.5"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                  >
+                                    <path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z" />
+                                  </svg>
                                   Manage
                                 </button>
                               )
@@ -371,8 +457,13 @@ function ConnectedWalletMenuContent({ children }: ConnectedWalletMenuProps) {
                       showAvailableBalance={showAvailableBalance}
                       onToggleBalance={toggleBalanceView}
                       onBack={() => setMode('main')}
-                      send={send}
-                      optIn={optIn}
+                      send={{ ...send, explorerUrl: getTxExplorerUrl(send.txId) }}
+                      optIn={{ ...optIn, evmAddress, explorerUrl: getTxExplorerUrl(optIn.txId) }}
+                      assets={assetHoldings.length > 0 ? assetHoldings : undefined}
+                      availableBalance={availableBalance}
+                      onRefresh={() => rqClient.invalidateQueries()}
+                      isRefreshing={isFetching > 0}
+                      onExplore={handleExplore}
                     />
                   )}
                 </div>

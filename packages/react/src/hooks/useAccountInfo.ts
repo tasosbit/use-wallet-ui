@@ -1,5 +1,5 @@
 import { useQuery, UseQueryResult } from '@tanstack/react-query'
-import { useWallet, useNetwork } from '@d13co/use-wallet-react'
+import { useWallet, useNetwork } from '@txnlab/use-wallet-react'
 import algosdk from 'algosdk'
 
 /**

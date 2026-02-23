@@ -1,8 +1,20 @@
-import { useWallet } from '@d13co/use-wallet-react'
+import { useWallet } from '@txnlab/use-wallet-react'
+import { useQueryClient } from '@tanstack/react-query'
 import algosdk from 'algosdk'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 import { type AssetLookupInfo, useAssetLookup } from './useAssetLookup'
+
+/** Convert a decimal amount string to base units using string math to avoid floating-point errors. */
+function toBaseUnits(amount: string, decimals: number): number {
+  const [whole = '0', frac = ''] = amount.split('.')
+  const truncated = frac.slice(0, decimals).padEnd(decimals, '0')
+  const result = parseInt(whole + truncated, 10)
+  if (isNaN(result) || result <= 0) throw new Error('Invalid amount')
+  return result
+}
+
+export type ReceiverOptInStatus = 'idle' | 'checking' | 'opted-in' | 'not-opted-in'
 
 export interface UseSendReturn {
   sendType: 'algo' | 'asa'
@@ -16,6 +28,9 @@ export interface UseSendReturn {
   assetInfo: AssetLookupInfo | null
   assetLookupLoading: boolean
   assetLookupError: string | null
+  receiverOptInStatus: ReceiverOptInStatus
+  receiverAddressError: string | null
+  txId: string | null
   status: 'idle' | 'signing' | 'sending' | 'success' | 'error'
   error: string | null
   handleSend: () => Promise<void>
@@ -25,20 +40,71 @@ export interface UseSendReturn {
 
 export function useSend(): UseSendReturn {
   const { activeAddress, algodClient, signTransactions } = useWallet()
+  const queryClient = useQueryClient()
 
   const [sendType, setSendType] = useState<'algo' | 'asa'>('algo')
   const [receiver, setReceiver] = useState('')
   const [amount, setAmount] = useState('')
   const [status, setStatus] = useState<'idle' | 'signing' | 'sending' | 'success' | 'error'>('idle')
   const [error, setError] = useState<string | null>(null)
+  const [txId, setTxId] = useState<string | null>(null)
 
   const lookup = useAssetLookup({ enabled: sendType === 'asa' })
+
+  const [receiverOptInStatus, setReceiverOptInStatus] = useState<ReceiverOptInStatus>('idle')
+
+  const receiverAddressError: string | null =
+    receiver.length > 0 && !algosdk.isValidAddress(receiver)
+      ? 'Invalid Algorand address'
+      : null
+
+  // Check if receiver is opted into the selected asset
+  const assetIdInput = lookup.assetIdInput
+  useEffect(() => {
+    if (sendType !== 'asa' || !assetIdInput || !receiver || !algodClient) {
+      setReceiverOptInStatus('idle')
+      return
+    }
+
+    let valid = false
+    try {
+      valid = algosdk.isValidAddress(receiver)
+    } catch {
+      // ignore
+    }
+    if (!valid) {
+      setReceiverOptInStatus('idle')
+      return
+    }
+
+    setReceiverOptInStatus('checking')
+    let cancelled = false
+
+    const timer = setTimeout(async () => {
+      try {
+        const info = await algodClient.accountInformation(receiver).do()
+        if (cancelled) return
+        const assetId = Number(assetIdInput)
+        const optedIn = info.assets?.some((a: { assetId: number | bigint }) => Number(a.assetId) === assetId)
+        setReceiverOptInStatus(optedIn ? 'opted-in' : 'not-opted-in')
+      } catch {
+        if (!cancelled) setReceiverOptInStatus('idle')
+      }
+    }, 500)
+
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [sendType, assetIdInput, receiver, algodClient])
 
   const reset = useCallback(() => {
     setSendType('algo')
     setReceiver('')
     setAmount('')
     lookup.reset()
+    setReceiverOptInStatus('idle')
+    setTxId(null)
     setStatus('idle')
     setError(null)
   }, [lookup])
@@ -53,14 +119,14 @@ export function useSend(): UseSendReturn {
 
     setStatus('signing')
     setError(null)
+    setTxId(null)
 
     try {
       const suggestedParams = await algodClient.getTransactionParams().do()
 
       let txn: algosdk.Transaction
       if (sendType === 'algo') {
-        const amountMicroAlgos = Math.floor(parseFloat(amount) * 1_000_000)
-        if (isNaN(amountMicroAlgos) || amountMicroAlgos <= 0) throw new Error('Invalid amount')
+        const amountMicroAlgos = toBaseUnits(amount, 6)
         txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
           sender: activeAddress,
           receiver,
@@ -69,8 +135,7 @@ export function useSend(): UseSendReturn {
         })
       } else {
         if (!lookup.assetInfo) throw new Error('No asset selected')
-        const baseUnits = Math.floor(parseFloat(amount) * Math.pow(10, lookup.assetInfo.decimals))
-        if (isNaN(baseUnits) || baseUnits <= 0) throw new Error('Invalid amount')
+        const baseUnits = toBaseUnits(amount, lookup.assetInfo.decimals)
         txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
           sender: activeAddress,
           receiver,
@@ -85,15 +150,20 @@ export function useSend(): UseSendReturn {
       if (!signedTxn) throw new Error('Transaction was not signed')
 
       setStatus('sending')
+      const id = txn.txID()
       await algodClient.sendRawTransaction(signedTxn).do()
-      await algosdk.waitForConfirmation(algodClient, txn.txID(), 4)
+      await algosdk.waitForConfirmation(algodClient, id, 4)
 
+      // Refresh account balance and asset holdings
+      queryClient.invalidateQueries({ queryKey: ['account-info'] })
+
+      setTxId(id)
       setStatus('success')
     } catch (err) {
       setStatus('error')
       setError(err instanceof Error ? err.message : 'Send failed')
     }
-  }, [sendType, amount, receiver, lookup.assetInfo, activeAddress, algodClient, signTransactions])
+  }, [sendType, amount, receiver, lookup.assetInfo, activeAddress, algodClient, signTransactions, queryClient])
 
   return {
     sendType,
@@ -107,6 +177,9 @@ export function useSend(): UseSendReturn {
     assetInfo: lookup.assetInfo,
     assetLookupLoading: lookup.isLoading,
     assetLookupError: lookup.error,
+    receiverOptInStatus,
+    receiverAddressError,
+    txId,
     status,
     error,
     handleSend,

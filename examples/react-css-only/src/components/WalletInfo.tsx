@@ -1,5 +1,5 @@
-import { useWallet } from '@d13co/use-wallet-react'
-import { useAccountInfo, useNfd, NfdAvatar } from '@d13co/use-wallet-ui-react'
+import { useWallet } from '@txnlab/use-wallet-react'
+import { useAccountInfo, useNfd, NfdAvatar } from '@txnlab/use-wallet-ui-react'
 import { formatShortAddress, formatNumber } from '@txnlab/utils-ts'
 
 export function WalletInfo() {

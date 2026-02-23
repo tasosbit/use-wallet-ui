@@ -1,4 +1,4 @@
-import { useWallet } from '@d13co/use-wallet-react'
+import { useWallet } from '@txnlab/use-wallet-react'
 import { useCallback, useEffect, useState } from 'react'
 
 export interface AssetLookupInfo {

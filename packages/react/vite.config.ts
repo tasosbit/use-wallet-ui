@@ -17,7 +17,7 @@ export default defineConfig({
         'react-dom',
         'react/jsx-runtime',
         'react/jsx-dev-runtime',
-        '@d13co/use-wallet-react',
+        '@txnlab/use-wallet-react',
       ],
       output: [
         {

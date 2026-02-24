@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 import { AlgoSymbol } from './AlgoSymbol'
+import { BridgePanel, type BridgePanelProps } from './BridgePanel'
 import { OptInPanel, type OptInPanelProps } from './OptInPanel'
 import { SendPanel, type SendPanelProps } from './SendPanel'
 
@@ -17,11 +18,11 @@ export interface ManagePanelProps {
   onBack: () => void
   send?: Omit<SendPanelProps, 'onBack'>
   optIn?: Omit<OptInPanelProps, 'onBack'>
+  bridge?: Omit<BridgePanelProps, 'onBack'>
   assets?: AssetHoldingDisplay[]
   availableBalance?: number | null
   onRefresh?: () => void
   isRefreshing?: boolean
-  onBridge?: () => void
   onExplore?: () => void
 }
 
@@ -50,18 +51,18 @@ export function ManagePanel({
   onBack,
   send,
   optIn,
+  bridge,
   assets,
   availableBalance,
   onRefresh,
   isRefreshing,
-  onBridge,
   onExplore,
 }: ManagePanelProps) {
-  const [mode, setMode] = useState<'main' | 'send' | 'opt-in'>('main')
+  const [mode, setMode] = useState<'main' | 'send' | 'opt-in' | 'bridge'>('main')
   const [showAllAssets, setShowAllAssets] = useState(false)
   const [animDir, setAnimDir] = useState<'forward' | 'back' | 'none'>('none')
 
-  const goForward = useCallback((target: 'send' | 'opt-in') => {
+  const goForward = useCallback((target: 'send' | 'opt-in' | 'bridge') => {
     setAnimDir('forward')
     setMode(target)
   }, [])
@@ -78,6 +79,8 @@ export function ManagePanel({
     content = <SendPanel {...send} accountAssets={assets} availableBalance={availableBalance} onBack={() => goBack(send.reset)} />
   } else if (mode === 'opt-in' && optIn) {
     content = <OptInPanel {...optIn} onBack={() => goBack(optIn.reset)} />
+  } else if (mode === 'bridge' && bridge) {
+    content = <BridgePanel {...bridge} onBack={() => goBack(bridge.onReset)} />
   } else {
     content = (
       <>
@@ -275,8 +278,8 @@ export function ManagePanel({
             Receive
           </button>
           <button
-            onClick={onBridge}
-            disabled={!onBridge}
+            onClick={() => goForward('bridge')}
+            disabled={!bridge}
             className="py-2.5 px-4 bg-[var(--wui-color-bg-tertiary)] text-[var(--wui-color-text)] font-medium rounded-xl hover:brightness-90 transition-all text-sm flex items-center justify-center disabled:opacity-40 disabled:pointer-events-none"
           >
             <svg

@@ -64,11 +64,17 @@
     "generate:css": "npx @tailwindcss/cli -c ./tailwind.config.js -i ./src/input.css -o ./dist/style.css && node ./scripts/post-process-css.js"
   },
   "peerDependencies": {
+    "@allbridge/bridge-core-sdk": ">=3.0.0",
     "@d13co/liquid-ui": "workspace:*",
     "@txnlab/use-wallet-react": "^4.0.1",
     "liquid-accounts-evm": ">=0.0.1",
     "react": "^18 || ^19",
     "react-dom": "^18 || ^19"
+  },
+  "peerDependenciesMeta": {
+    "@allbridge/bridge-core-sdk": {
+      "optional": true
+    }
   },
   "dependencies": {
     "@algorandfoundation/algokit-utils": "^9.2.0",
@@ -82,6 +88,7 @@
     "tailwind-merge": "3.4.1"
   },
   "devDependencies": {
+    "@allbridge/bridge-core-sdk": "^3.29.1",
     "@tailwindcss/cli": "4.1.18",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",

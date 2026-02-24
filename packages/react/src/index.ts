@@ -10,6 +10,8 @@ export { WalletList } from './components/WalletList'
 export { NfdAvatar } from './components/NfdAvatar'
 
 // Hooks
+export { useBridge } from './hooks/useBridge'
+export type { UseBridgeReturn, UseBridgeOptions, BridgeStatus, BridgeChain, BridgeToken } from './hooks/useBridge'
 export { useNfd } from './hooks/useNfd'
 export type { NfdRecord, NfdLookupResponse } from './hooks/useNfd'
 export { useAccountInfo } from './hooks/useAccountInfo'

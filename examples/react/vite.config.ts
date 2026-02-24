@@ -14,4 +14,7 @@ export default defineConfig({
       },
     }),
   ],
+  resolve: {
+    dedupe: ['@tanstack/react-query', 'react', 'react-dom'],
+  },
 })

@@ -23,6 +23,7 @@ import { AlgoSymbol, ManagePanel, useAssets, type AssetHoldingDisplay } from '@d
 import { useAccountInfo } from '../hooks/useAccountInfo'
 import { useAssetRegistry } from '../hooks/useAssetRegistry'
 import { useNfd } from '../hooks/useNfd'
+import { useBridge } from '../hooks/useBridge'
 import { useOptIn } from '../hooks/useOptIn'
 import { useSend } from '../hooks/useSend'
 import { useWalletUI } from '../providers/WalletUIProvider'
@@ -92,6 +93,7 @@ function ConnectedWalletMenuContent({ children }: ConnectedWalletMenuProps) {
   }, [activeWallet])
 
   const optIn = useOptIn(registry, optedInAssetIds)
+  const bridge = useBridge()
 
   const { assets: assetInfoMap } = useAssets(assetIds, algodClient as any)
 
@@ -459,6 +461,52 @@ function ConnectedWalletMenuContent({ children }: ConnectedWalletMenuProps) {
                       onBack={() => setMode('main')}
                       send={{ ...send, explorerUrl: getTxExplorerUrl(send.txId) }}
                       optIn={{ ...optIn, evmAddress, explorerUrl: getTxExplorerUrl(optIn.txId) }}
+                      bridge={
+                        bridge.isAvailable
+                          ? {
+                              chains: bridge.chains,
+                              chainsLoading: bridge.chainsLoading,
+                              sourceChainSymbol: bridge.sourceChain?.chainSymbol ?? null,
+                              onSourceChainChange: bridge.setSourceChain,
+                              sourceTokenSymbol: bridge.sourceToken?.symbol ?? null,
+                              onSourceTokenChange: bridge.setSourceToken,
+                              destinationTokenSymbol: bridge.destinationToken?.symbol ?? null,
+                              destinationTokens: bridge.destinationToken
+                                ? [bridge.destinationToken]
+                                : [],
+                              onDestinationTokenChange: bridge.setDestinationToken,
+                              amount: bridge.amount,
+                              onAmountChange: bridge.setAmount,
+                              receivedAmount: bridge.receivedAmount,
+                              quoteLoading: bridge.quoteLoading,
+                              gasFee: bridge.gasFee,
+                              gasFeeLoading: bridge.gasFeeLoading,
+                              evmAddress: bridge.evmAddress,
+                              algorandAddress: bridge.algorandAddress,
+                              estimatedTimeMs: bridge.estimatedTimeMs,
+                              transferStatus: bridge.transferStatus
+                                ? {
+                                    sendConfirmations: bridge.transferStatus.send?.confirmations ?? 0,
+                                    sendConfirmationsNeeded: bridge.transferStatus.send?.confirmationsNeeded ?? 0,
+                                    signaturesCount: bridge.transferStatus.signaturesCount ?? 0,
+                                    signaturesNeeded: bridge.transferStatus.signaturesNeeded ?? 0,
+                                    receiveConfirmations: bridge.transferStatus.receive?.confirmations ?? null,
+                                    receiveConfirmationsNeeded: bridge.transferStatus.receive?.confirmationsNeeded ?? null,
+                                  }
+                                : null,
+                              optInNeeded: bridge.optInNeeded,
+                              optInSigned: bridge.optInSigned,
+                              watchingForFunding: bridge.watchingForFunding,
+                              optInConfirmed: bridge.optInConfirmed,
+                              status: bridge.status,
+                              error: bridge.error,
+                              sourceTxId: bridge.sourceTxId,
+                              onBridge: bridge.handleBridge,
+                              onReset: bridge.reset,
+                              onRetry: bridge.retry,
+                            }
+                          : undefined
+                      }
                       assets={assetHoldings.length > 0 ? assetHoldings : undefined}
                       availableBalance={availableBalance}
                       onRefresh={() => rqClient.invalidateQueries()}

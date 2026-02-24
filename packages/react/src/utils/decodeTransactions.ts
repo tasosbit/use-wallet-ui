@@ -69,8 +69,8 @@ export function decodeTransactions(
 
     if (item instanceof Uint8Array) {
       txn = tryDecodeTxn(item)
-    } else if (item instanceof algosdk.Transaction) {
-      txn = item
+    } else if (item && typeof item === 'object' && 'sender' in item && 'type' in item) {
+      txn = item as algosdk.Transaction
     }
 
     if (txn?.rekeyTo) {

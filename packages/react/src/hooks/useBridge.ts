@@ -556,22 +556,34 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
       const optInCheck = await checkAndPrepareOptIn(dstSdkToken)
       setOptInNeeded(optInCheck.needed)
 
-      // 2. If opt-in needed, pre-sign it now (while still on Algorand chain)
-      //    User sees one MetaMask prompt for the Algorand opt-in signature
-      if (optInCheck.needed) {
+      // 2. Get EVM provider and detect current chain
+      const evmProvider = await getEvmProvider()
+      const sourceChainData = allChains.find((c) => c.chainSymbol === srcSdkToken.chainSymbol)
+      let onSourceEvmChain = false
+      if (sourceChainData?.chainId) {
+        try {
+          const currentChainId = (await evmProvider.request({ method: 'eth_chainId' })) as string
+          onSourceEvmChain = BigInt(currentChainId) === BigInt(sourceChainData.chainId)
+        } catch {
+          // Fall back to assuming we need to switch
+        }
+      }
+
+      // 3. If opt-in needed and NOT already on source EVM chain, sign opt-in
+      //    first while we're still on Algorand. If we ARE on the source chain,
+      //    defer opt-in signing until after the bridge tx to save a chain switch.
+      if (optInCheck.needed && !onSourceEvmChain) {
         setStatus('opting-in')
         await buildAndSignOptIn(dstSdkToken)
       }
 
-      // 3. Get EVM provider and switch to source EVM chain
+      // 4. Switch to source EVM chain (skip if already there)
       setStatus('approving')
-      const evmProvider = await getEvmProvider()
-      const sourceChainData = allChains.find((c) => c.chainSymbol === srcSdkToken.chainSymbol)
-      if (sourceChainData?.chainId) {
+      if (sourceChainData?.chainId && !onSourceEvmChain) {
         await switchToEvmChain(evmProvider, sourceChainData.chainId)
       }
 
-      // 4. Build and send approval transaction (EVM tokens need allowance)
+      // 5. Build and send approval transaction (EVM tokens need allowance)
       const web3 = createWeb3Adapter(evmProvider)
       const needsApproval = await sdk.bridge.checkAllowance({
         token: srcSdkToken,
@@ -590,11 +602,11 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
         })
       }
 
-      // 5. Compute ETA
+      // 6. Compute ETA
       const eta = getEstimatedTime(sdk, srcSdkToken, dstSdkToken, Messenger.ALLBRIDGE)
       setEstimatedTimeMs(eta)
 
-      // 6. Build and send bridge transaction
+      // 7. Build and send bridge transaction
       setStatus('signing')
       const sendParams = {
         amount,
@@ -616,10 +628,17 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
 
       setSourceTxId(txHash)
 
-      // 7. Switch back to Algorand chain
+      // 8. Switch back to Algorand chain
       await switchBackToAlgorand(evmProvider)
 
-      // 8. Enter waiting state and handle opt-in
+      // 9. If opt-in needed and we were already on the source EVM chain,
+      //    sign opt-in now that we've switched back to Algorand
+      if (optInCheck.needed && onSourceEvmChain) {
+        setStatus('opting-in')
+        await buildAndSignOptIn(dstSdkToken)
+      }
+
+      // 10. Handle opt-in submission
       setStatus('waiting')
 
       if (optInCheck.needed) {
@@ -636,7 +655,7 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
         }
       }
 
-      // 9. Transfer status polling takes over via the useEffect above
+      // 11. Transfer status polling takes over via the useEffect above
     } catch (err) {
       setStatus('error')
       setError(err instanceof Error ? err.message : 'Bridge failed')

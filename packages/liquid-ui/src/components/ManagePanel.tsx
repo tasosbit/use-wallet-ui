@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
 import { AlgoSymbol } from './AlgoSymbol'
 import { BridgePanel, type BridgePanelProps } from './BridgePanel'
-import { OptInPanel, type OptInPanelProps } from './OptInPanel'
+import { ReceivePanel, type ReceivePanelProps } from './ReceivePanel'
 import { SendPanel, type SendPanelProps } from './SendPanel'
 
 export interface AssetHoldingDisplay {
@@ -17,7 +17,7 @@ export interface ManagePanelProps {
   onToggleBalance: () => void
   onBack: () => void
   send?: Omit<SendPanelProps, 'onBack'>
-  optIn?: Omit<OptInPanelProps, 'onBack'>
+  optIn?: Omit<ReceivePanelProps, 'onBack'>
   bridge?: Omit<BridgePanelProps, 'onBack'>
   assets?: AssetHoldingDisplay[]
   availableBalance?: number | null
@@ -78,7 +78,7 @@ export function ManagePanel({
   if (mode === 'send' && send) {
     content = <SendPanel {...send} accountAssets={assets} availableBalance={availableBalance} onBack={() => goBack(send.reset)} />
   } else if (mode === 'opt-in' && optIn) {
-    content = <OptInPanel {...optIn} onBack={() => goBack(optIn.reset)} />
+    content = <ReceivePanel {...optIn} onBack={() => goBack(optIn.reset)} />
   } else if (mode === 'bridge' && bridge) {
     content = <BridgePanel {...bridge} onBack={() => goBack(bridge.onReset)} />
   } else {

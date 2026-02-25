@@ -22,7 +22,7 @@ export interface UseOptInReturn {
   handleOptIn: () => Promise<void>
   reset: () => void
   retry: () => void
-  // Name search fields for OptInPanel
+  // Name search fields for ReceivePanel
   nameSearchResults: CachedAsset[]
   nameSearchLoading: boolean
   registryLoading: boolean

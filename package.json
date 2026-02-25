@@ -64,17 +64,24 @@
   },
   "pnpm": {
     "overrides": {
-      "@txnlab/use-wallet-ui-react": "workspace:*"
+      "@txnlab/use-wallet-ui-react": "workspace:*",
+      "@txnlab/use-wallet": "link:../use-wallet/packages/use-wallet",
+      "@txnlab/use-wallet-react": "link:../use-wallet/packages/use-wallet-react"
     },
     "onlyBuiltDependencies": [
       "@parcel/watcher",
       "@tailwindcss/oxide",
+      "bigint-buffer",
+      "bufferutil",
       "esbuild",
+      "keccak",
       "msw",
-      "unrs-resolver"
+      "unrs-resolver",
+      "utf-8-validate"
     ]
   },
   "dependencies": {
+    "@txnlab/use-wallet": "link:../use-wallet/packages/use-wallet",
     "@txnlab/use-wallet-react": "link:../use-wallet/packages/use-wallet-react"
   }
 }

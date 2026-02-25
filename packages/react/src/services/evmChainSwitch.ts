@@ -1,3 +1,4 @@
+import { ALGORAND_CHAIN_ID_HEX } from 'liquid-accounts-evm'
 import type { EIP1193Provider } from './evmProviderAdapter'
 
 /**
@@ -28,7 +29,6 @@ export async function switchToEvmChain(
  * Switch back to the Algorand EVM chain (4160 / 0x1040) after bridge.
  */
 export async function switchBackToAlgorand(provider: EIP1193Provider): Promise<void> {
-  const ALGORAND_CHAIN_ID_HEX = '0x1040'
   try {
     await provider.request({
       method: 'wallet_switchEthereumChain',

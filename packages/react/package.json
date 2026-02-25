@@ -17,6 +17,16 @@
         "default": "./dist/cjs/index.cjs"
       }
     },
+    "./rainbowkit": {
+      "import": {
+        "types": "./dist/types/rainbowkit.d.ts",
+        "default": "./dist/esm/rainbowkit.js"
+      },
+      "require": {
+        "types": "./dist/types/rainbowkit.d.cts",
+        "default": "./dist/cjs/rainbowkit.cjs"
+      }
+    },
     "./dist/style.css": "./dist/style.css",
     "./theme.css": "./src/theme.css",
     "./package.json": "./package.json"
@@ -66,13 +76,22 @@
   "peerDependencies": {
     "@allbridge/bridge-core-sdk": ">=3.0.0",
     "@d13co/liquid-ui": "workspace:*",
+    "@rainbow-me/rainbowkit": ">=2.0.0",
+    "@tanstack/react-query": ">=5.0.0",
     "@txnlab/use-wallet-react": "^4.0.1",
     "liquid-accounts-evm": ">=0.0.1",
     "react": "^18 || ^19",
-    "react-dom": "^18 || ^19"
+    "react-dom": "^18 || ^19",
+    "wagmi": ">=2.0.0"
   },
   "peerDependenciesMeta": {
     "@allbridge/bridge-core-sdk": {
+      "optional": true
+    },
+    "@rainbow-me/rainbowkit": {
+      "optional": true
+    },
+    "wagmi": {
       "optional": true
     }
   },
@@ -81,7 +100,6 @@
     "@d13co/open-in": "^0.1.0",
     "@floating-ui/react": "0.27.17",
     "@headlessui/react": "2.2.9",
-    "@tanstack/react-query": "5.90.21",
     "@txnlab/utils-ts": "0.1.0",
     "abel-ghost-sdk": "^0.0.5",
     "clsx": "2.1.1",
@@ -89,10 +107,12 @@
   },
   "devDependencies": {
     "@allbridge/bridge-core-sdk": "^3.29.1",
+    "@rainbow-me/rainbowkit": "^2.2.0",
     "@tailwindcss/cli": "4.1.18",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "@vitest/coverage-v8": "3.2.4",
+    "@wagmi/core": "^2.16.0",
     "algosdk": "3.5.2",
     "liquid-accounts-evm": "link:../../../evm-sdk",
     "publint": "0.3.17",
@@ -100,9 +120,11 @@
     "react-dom": "19.2.4",
     "tailwindcss": "4.1.18",
     "tsx": "4.21.0",
+    "viem": "^2.45.0",
     "vite": "6.4.1",
     "vite-plugin-dts": "4.5.4",
     "vite-tsconfig-paths": "5.1.4",
-    "vitest": "3.2.4"
+    "vitest": "3.2.4",
+    "wagmi": "^2.14.0"
   }
 }

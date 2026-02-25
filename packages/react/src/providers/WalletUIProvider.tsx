@@ -172,6 +172,24 @@ interface WalletUIContextType {
   requestWelcome: (account: WelcomeAccount) => void
 }
 
+/**
+ * Configuration returned by `createRainbowKitConfig()` from the
+ * `@txnlab/use-wallet-ui-react/rainbowkit` entry point.
+ *
+ * Pass this to WalletUIProvider's `rainbowkit` prop to automatically set up
+ * WagmiProvider, RainbowKitProvider, and the bridge component.
+ */
+export interface RainbowKitUIConfig {
+  Provider: React.ComponentType<{
+    queryClient: QueryClient
+    resolvedTheme: 'light' | 'dark'
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    walletManager: any
+    children: React.ReactNode
+  }>
+  getEvmAccounts: () => Promise<string[]>
+}
+
 interface WalletUIProviderProps {
   children: ReactNode
   queryClient?: QueryClient
@@ -193,6 +211,12 @@ interface WalletUIProviderProps {
    * which will enable dark mode unless explicitly overridden with theme="light".
    */
   theme?: Theme
+  /**
+   * RainbowKit integration config, created by `createRainbowKitConfig()`.
+   * When provided, WalletUIProvider wraps children with WagmiProvider,
+   * RainbowKitProvider, and the RainbowKitBridge — no manual setup needed.
+   */
+  rainbowkit?: RainbowKitUIConfig
 }
 
 // Default query client configuration for NFD queries
@@ -352,6 +376,7 @@ export function WalletUIProvider({
   enablePrefetching = true,
   prefetchNfdView = 'thumbnail',
   theme = 'system',
+  rainbowkit,
 }: WalletUIProviderProps) {
   // Use provided query client or create a default one
   const queryClient = useMemo(() => externalQueryClient || createDefaultQueryClient(), [externalQueryClient])
@@ -512,6 +537,23 @@ export function WalletUIProvider({
   const { algodClient, activeWallet } = useWallet()
   const { activeNetworkConfig } = useNetwork()
 
+  // RainbowKit integration: inject getEvmAccounts into the wallet instance
+  useEffect(() => {
+    if (rainbowkit) {
+      const rkWallet = manager.wallets.find((w) => w.id === 'rainbowkit')
+      if (rkWallet && 'setGetEvmAccounts' in rkWallet) {
+        ;(rkWallet as { setGetEvmAccounts: (fn: () => Promise<string[]>) => void }).setGetEvmAccounts(
+          rainbowkit.getEvmAccounts,
+        )
+      }
+    } else if (manager.wallets.some((w) => w.id === 'rainbowkit')) {
+      console.warn(
+        '[WalletUI] WalletManager includes a RainbowKit wallet but no `rainbowkit` prop was passed to WalletUIProvider.\n' +
+          'Import { createRainbowKitConfig } from "@txnlab/use-wallet-ui-react/rainbowkit" and pass the result as the `rainbowkit` prop.',
+      )
+    }
+  }, [manager, rainbowkit])
+
   // Keep wallet name and network config in refs so requestBeforeSign doesn't depend on them
   const walletNameRef = useRef<string | undefined>(undefined)
   walletNameRef.current = activeWallet?.metadata?.name
@@ -585,12 +627,20 @@ export function WalletUIProvider({
   // - For 'system', don't set the attribute so CSS media queries handle it
   const dataTheme = theme === 'system' ? undefined : theme
 
+  const wrappedChildren = rainbowkit ? (
+    <rainbowkit.Provider queryClient={queryClient} resolvedTheme={resolvedTheme} walletManager={manager}>
+      {children}
+    </rainbowkit.Provider>
+  ) : (
+    children
+  )
+
   const content = (
     <WalletUIContext.Provider value={contextValue}>
       <div data-wallet-theme data-theme={dataTheme}>
         {/* Internal prefetcher component that runs automatically */}
         <WalletAccountsPrefetcher enabled={enablePrefetching} nfdView={prefetchNfdView} />
-        {children}
+        {wrappedChildren}
         {showSignDialog && extensionDetected && (
           <ExtensionSignIndicator transactionCount={pendingSign!.transactions.length} dangerous={pendingSign!.dangerous} onReject={handleRejectSign} />
         )}

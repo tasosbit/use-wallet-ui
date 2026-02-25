@@ -7,7 +7,10 @@ import dts from 'vite-plugin-dts'
 export default defineConfig({
   build: {
     lib: {
-      entry: resolve(__dirname, 'src/index.ts'),
+      entry: {
+        index: resolve(__dirname, 'src/index.ts'),
+        rainbowkit: resolve(__dirname, 'src/rainbowkit.ts'),
+      },
       name: 'use-wallet-ui-react',
     },
     outDir: 'dist',
@@ -18,12 +21,19 @@ export default defineConfig({
         'react/jsx-runtime',
         'react/jsx-dev-runtime',
         '@txnlab/use-wallet-react',
+        // External so consumers share a single copy (avoids duplicate React
+        // contexts when wagmi/RainbowKit also depend on react-query)
+        '@tanstack/react-query',
+        // RainbowKit bridge externals (optional peer deps)
+        'wagmi',
+        '@wagmi/core',
+        '@rainbow-me/rainbowkit',
       ],
       output: [
         {
           format: 'es',
           dir: 'dist/esm',
-          entryFileNames: 'index.js',
+          entryFileNames: '[name].js',
           preserveModules: false,
           exports: 'named',
           assetFileNames: 'assets/[name][extname]',
@@ -37,7 +47,7 @@ export default defineConfig({
         {
           format: 'cjs',
           dir: 'dist/cjs',
-          entryFileNames: 'index.cjs',
+          entryFileNames: '[name].cjs',
           preserveModules: false,
           exports: 'named',
           assetFileNames: 'assets/[name][extname]',
@@ -75,16 +85,18 @@ export default defineConfig({
       compilerOptions: {
         declarationMap: true,
       },
-      // Use afterBuild hook to copy .d.ts to .d.cts
+      // Use afterBuild hook to copy .d.ts to .d.cts for each entry
       afterBuild: async () => {
         try {
-          const dtsPath = resolve(__dirname, 'dist/types/index.d.ts')
-          const dctsPath = resolve(__dirname, 'dist/types/index.d.cts')
-          const content = await fs.readFile(dtsPath, 'utf-8')
-          await fs.writeFile(dctsPath, content)
-          console.log('Successfully created .d.cts file')
+          for (const name of ['index', 'rainbowkit']) {
+            const dtsPath = resolve(__dirname, `dist/types/${name}.d.ts`)
+            const dctsPath = resolve(__dirname, `dist/types/${name}.d.cts`)
+            const content = await fs.readFile(dtsPath, 'utf-8')
+            await fs.writeFile(dctsPath, content)
+          }
+          console.log('Successfully created .d.cts files')
         } catch (error) {
-          console.error('Error creating .d.cts file:', error)
+          console.error('Error creating .d.cts files:', error)
         }
       },
     }),

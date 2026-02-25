@@ -3,7 +3,7 @@ import type { CachedAsset } from '../cache/assetCache'
 import { Spinner } from './Spinner'
 import { TransactionStatus, type TransactionStatusValue } from './TransactionStatus'
 
-export interface OptInPanelProps {
+export interface ReceivePanelProps {
   activeAddress?: string | null
   optedInAssetIds?: Set<number>
   assetIdInput: string
@@ -29,7 +29,7 @@ export interface OptInPanelProps {
   evmAddress?: string | null
 }
 
-export function OptInPanel({
+export function ReceivePanel({
   activeAddress,
   optedInAssetIds,
   assetIdInput,
@@ -52,7 +52,7 @@ export function OptInPanel({
   onSelectNameAsset,
   isNameMode,
   evmAddress,
-}: OptInPanelProps) {
+}: ReceivePanelProps) {
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle')
   const [evmExpanded, setEvmExpanded] = useState(false)
 
@@ -97,14 +97,14 @@ export function OptInPanel({
         </button>
         <h3 className="text-lg font-bold leading-none text-[var(--wui-color-text)] wallet-custom-font">Receive</h3>
         {registryLoading && (
-          <div className="ml-auto flex items-center gap-1 text-xs text-[var(--wui-color-text-tertiary)]">
+          <div className="ml-auto flex items-center gap-1 text-xs text-[var(--wui-color-text-secondary)]">
             <Spinner className="h-3 w-3" />
             <span>Loading registry...</span>
           </div>
         )}
       </div>
 
-      <p className="text-xs text-[var(--wui-color-text-tertiary)] mb-2 leading-relaxed">
+      <p className="text-xs text-[var(--wui-color-text-secondary)] mb-2 leading-relaxed">
         This is your liquid EVM Algorand account. You can receive ALGO and any opted-in assets here, and manage your asset opt-ins below.
       </p>
 
@@ -135,7 +135,7 @@ export function OptInPanel({
       {/* EVM Controller display (collapsible) */}
       {evmAddress && (
         <>
-          <p className="text-xs text-[var(--wui-color-text-tertiary)] mb-2 leading-relaxed">
+          <p className="text-xs text-[var(--wui-color-text-secondary)] mb-2 leading-relaxed">
             It is controlled entirely by your EVM account:
           </p>
 
@@ -176,7 +176,7 @@ export function OptInPanel({
       {status === 'idle' && (
         <>
           {/* Opt-in explanation */}
-          <p className="text-xs text-[var(--wui-color-text-tertiary)] mb-3 leading-relaxed">
+          <p className="text-xs text-[var(--wui-color-text-secondary)] mb-3 leading-relaxed">
             Algorand accounts must opt in to assets before receiving them. Search for an asset below to opt in.
           </p>
 
@@ -187,7 +187,7 @@ export function OptInPanel({
               placeholder="Search by name or asset ID"
               value={assetIdInput}
               onChange={(e) => setAssetIdInput(e.target.value)}
-              className="w-full rounded-lg border border-[var(--wui-color-border)] bg-[var(--wui-color-bg-secondary)] py-2.5 px-3 text-sm text-[var(--wui-color-text)] placeholder:text-[var(--wui-color-text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--wui-color-primary)] focus:border-transparent"
+              className="w-full rounded-lg border border-[var(--wui-color-border)] bg-[var(--wui-color-bg-secondary)] py-2.5 px-3 text-sm text-[var(--wui-color-text)] placeholder:text-[var(--wui-color-text-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--wui-color-primary)] focus:border-transparent"
             />
           </div>
 
@@ -238,13 +238,13 @@ export function OptInPanel({
                         {asset.name}
                         {asset.peraVerified && <VerifiedBadge />}
                         {optedInAssetIds?.has(asset.index) && (
-                          <span className="ml-1.5 text-xs text-[var(--wui-color-text-tertiary)]">(opted in)</span>
+                          <span className="ml-1.5 text-xs text-[var(--wui-color-text-secondary)]">(opted in)</span>
                         )}
                       </p>
                       {asset.unitName && <p className="text-xs text-[var(--wui-color-text-secondary)]">{asset.unitName}</p>}
                     </div>
                   </div>
-                  <span className="text-xs text-[var(--wui-color-text-tertiary)] shrink-0 ml-2">ID: {asset.index}</span>
+                  <span className="text-xs text-[var(--wui-color-text-secondary)] shrink-0 ml-2">ID: {asset.index}</span>
                 </button>
               ))}
             </div>
@@ -332,10 +332,10 @@ function AssetCard({
           </p>
           {unitName && <p className="text-xs text-[var(--wui-color-text-secondary)]">{unitName}</p>}
         </div>
-        <span className="text-xs text-[var(--wui-color-text-tertiary)]">ID: {index}</span>
+        <span className="text-xs text-[var(--wui-color-text-secondary)]">ID: {index}</span>
       </div>
       {isAlreadyOptedIn ? (
-        <p className="text-xs text-[var(--wui-color-text-tertiary)] text-center py-1">Already opted in — no action needed.</p>
+        <p className="text-xs text-[var(--wui-color-text-secondary)] text-center py-1">Already opted in — no action needed.</p>
       ) : (
         <button
           onClick={onOptIn}

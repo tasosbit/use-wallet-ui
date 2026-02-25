@@ -1,8 +1,8 @@
 import { useState, useCallback } from 'react'
-import type { SendPanelProps, OptInPanelProps } from '@d13co/liquid-ui'
+import type { SendPanelProps, ReceivePanelProps } from '@d13co/liquid-ui'
 
 type MockSendReturn = Omit<SendPanelProps, 'onBack'>
-type MockOptInReturn = Omit<OptInPanelProps, 'onBack'>
+type MockOptInReturn = Omit<ReceivePanelProps, 'onBack'>
 
 export function useMockSend(): MockSendReturn {
   const [sendType, setSendType] = useState<'algo' | 'asa'>('algo')

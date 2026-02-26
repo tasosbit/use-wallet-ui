@@ -16,7 +16,7 @@ import {
   type TransferStatusResponse,
   type NodeRpcUrls,
 } from '../services/bridgeSdk'
-import { createWeb3Adapter, type EIP1193Provider } from '../services/evmProviderAdapter'
+import { type EIP1193Provider } from '../services/evmProviderAdapter'
 import { switchToEvmChain, switchBackToAlgorand } from '../services/evmChainSwitch'
 
 // -- Public types for the bridge panel --
@@ -84,6 +84,7 @@ export interface UseBridgeReturn {
 
   // Transfer tracking
   estimatedTimeMs: number | null
+  waitingSince: number | null
   transferStatus: TransferStatusResponse | null
 
   // Opt-in tracking
@@ -135,6 +136,7 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
   const [error, setError] = useState<string | null>(null)
   const [sourceTxId, setSourceTxId] = useState<string | null>(null)
   const [estimatedTimeMs, setEstimatedTimeMs] = useState<number | null>(null)
+  const [waitingSince, setWaitingSince] = useState<number | null>(null)
   const [transferStatus, setTransferStatus] = useState<TransferStatusResponse | null>(null)
 
   // Opt-in state
@@ -285,6 +287,31 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
     }
   }, [resolveSourceSdkToken, resolveDestSdkToken])
 
+  // -- Compute estimated transfer time when tokens change --
+
+  useEffect(() => {
+    const sdk = sdkRef.current
+    const src = resolveSourceSdkToken()
+    const dst = resolveDestSdkToken()
+    if (!sdk || !src || !dst) {
+      setEstimatedTimeMs(null)
+      return
+    }
+
+    let cancelled = false
+    ;(async () => {
+      try {
+        const { Messenger } = await import('@allbridge/bridge-core-sdk')
+        const eta = getEstimatedTime(sdk, src, dst, Messenger.ALLBRIDGE)
+        if (!cancelled) setEstimatedTimeMs(eta)
+      } catch {
+        if (!cancelled) setEstimatedTimeMs(null)
+      }
+    })()
+
+    return () => { cancelled = true }
+  }, [resolveSourceSdkToken, resolveDestSdkToken])
+
   // -- Debounced quote calculation --
 
   useEffect(() => {
@@ -343,6 +370,8 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
 
           if (isComplete) {
             setStatus('success')
+            queryClient.invalidateQueries({ queryKey: ['account-info'] })
+            queryClient.invalidateQueries({ queryKey: ['account-balance'] })
             return
           }
         } catch {
@@ -391,6 +420,7 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
     setSourceTxId(null)
     setTransferStatus(null)
     setEstimatedTimeMs(null)
+    setWaitingSince(null)
     setOptInNeeded(false)
     setOptInSigned(false)
     setWatchingForFunding(false)
@@ -414,7 +444,6 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
       } else {
         setSelectedSourceTokenSymbol(null)
       }
-      setAmount('')
       setReceivedAmount(null)
     },
     [chains],
@@ -422,7 +451,6 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
 
   const setSourceTokenBySymbol = useCallback((symbol: string) => {
     setSelectedSourceTokenSymbol(symbol)
-    setAmount('')
     setReceivedAmount(null)
   }, [])
 
@@ -584,7 +612,6 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
       }
 
       // 5. Build and send approval transaction (EVM tokens need allowance)
-      const web3 = createWeb3Adapter(evmProvider)
       const needsApproval = await sdk.bridge.checkAllowance({
         token: srcSdkToken,
         owner: evmAddress,
@@ -602,11 +629,7 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
         })
       }
 
-      // 6. Compute ETA
-      const eta = getEstimatedTime(sdk, srcSdkToken, dstSdkToken, Messenger.ALLBRIDGE)
-      setEstimatedTimeMs(eta)
-
-      // 7. Build and send bridge transaction
+      // 6. Build and send bridge transaction
       setStatus('signing')
       const sendParams = {
         amount,
@@ -618,12 +641,20 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
         gasFeePaymentMethod: FeePaymentMethod.WITH_NATIVE_CURRENCY,
       }
 
-      const rawTx = await sdk.bridge.rawTxBuilder.send(sendParams, web3)
+      const rawTx = await sdk.bridge.rawTxBuilder.send(sendParams)
+
+      // The Allbridge SDK returns `value` as a decimal string (designed for web3.js),
+      // but EIP-1193 `eth_sendTransaction` expects hex-encoded quantities.
+      // Without conversion, MetaMask interprets the decimal string as hex, inflating the fee.
+      const eip1193Tx = {
+        ...rawTx,
+        value: rawTx.value ? '0x' + BigInt(rawTx.value).toString(16) : undefined,
+      }
 
       setStatus('sending')
       const txHash = (await evmProvider.request({
         method: 'eth_sendTransaction',
-        params: [rawTx],
+        params: [eip1193Tx],
       })) as string
 
       setSourceTxId(txHash)
@@ -640,6 +671,7 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
 
       // 10. Handle opt-in submission
       setStatus('waiting')
+      setWaitingSince(Date.now())
 
       if (optInCheck.needed) {
         if (optInCheck.canAfford) {
@@ -700,6 +732,7 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
     evmAddress,
     algorandAddress,
     estimatedTimeMs,
+    waitingSince,
     transferStatus,
     optInNeeded,
     optInSigned,

@@ -21,6 +21,8 @@ export type { Theme, ResolvedTheme } from './hooks/useResolvedTheme'
 // Providers
 export { WalletUIProvider, useWalletUI, useBeforeSignDialog, useAfterSignDialog, useWelcomeDialog } from './providers/WalletUIProvider'
 export type { RainbowKitUIConfig } from './providers/WalletUIProvider'
+export { useBridgeDialog } from './providers/BridgeDialogProvider'
+export type { BridgeDialogContextType } from './providers/BridgeDialogProvider'
 
 // Initialize custom fonts
 initializeFonts()

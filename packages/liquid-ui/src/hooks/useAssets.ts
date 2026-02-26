@@ -5,13 +5,14 @@ import type { AssetInfo, AssetLookupClient } from '../types'
 export function useAssets(
   assetIds: string[],
   algodClient: AssetLookupClient | undefined,
+  network?: string,
 ): {
   loading: boolean
   assets: Record<string, AssetInfo>
 } {
   const results = useQueries({
     queries: assetIds.map((id) => ({
-      queryKey: ['asset', id],
+      queryKey: ['asset', id, network],
       queryFn: async (): Promise<AssetInfo> => {
         const result = await algodClient!.getAssetByID(Number(id)).do()
         return {

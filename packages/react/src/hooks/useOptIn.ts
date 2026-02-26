@@ -65,8 +65,10 @@ export function useOptIn(registry: UseAssetRegistryReturn, optedInAssetIds: Set<
 
   const setAssetIdInput = useCallback(
     (value: string) => {
+      const numeric = isNumericInput(value)
+      console.log('[useOptIn] setAssetIdInput:', { value, isNumeric: numeric })
       setRawInput(value)
-      if (isNumericInput(value)) {
+      if (numeric) {
         lookup.setAssetIdInput(value)
         nameSearch.reset()
       } else {

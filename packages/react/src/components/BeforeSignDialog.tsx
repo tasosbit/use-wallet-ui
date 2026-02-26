@@ -25,9 +25,10 @@ interface BeforeSignDialogProps {
   signing?: boolean
   walletName?: string
   algodClient?: AssetLookupClient
+  network?: string
 }
 
-export function BeforeSignDialog({ transactions, message, dangerous, onApprove, onReject, onClose, signing, walletName, algodClient }: BeforeSignDialogProps) {
+export function BeforeSignDialog({ transactions, message, dangerous, onApprove, onReject, onClose, signing, walletName, algodClient, network }: BeforeSignDialogProps) {
   const { theme } = useWalletUI()
   const [animationState, setAnimationState] = useState<'starting' | 'entered' | 'exiting' | null>('starting')
 
@@ -105,6 +106,7 @@ export function BeforeSignDialog({ transactions, message, dangerous, onApprove, 
                 message={message}
                 dangerous={dangerous}
                 algodClient={algodClient}
+                network={network}
                 getApplicationAddress={(appId: number) => getApplicationAddress(BigInt(appId))}
                 onApprove={() => {
                   setAnimationState('exiting')

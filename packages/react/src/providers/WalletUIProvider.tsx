@@ -4,9 +4,11 @@ import algosdk from 'algosdk'
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 
 import { BeforeSignDialog } from '../components/BeforeSignDialog'
+import { BridgeDialog } from '../components/BridgeDialog'
 import { ExtensionSignIndicator } from '../components/ExtensionSignIndicator'
 import { WelcomeDialog } from '../components/WelcomeDialog'
 import { useResolvedTheme, type Theme, type ResolvedTheme } from '../hooks/useResolvedTheme'
+import { BridgeDialogProvider } from './BridgeDialogProvider'
 import { decodeTransactions, TransactionDanger, type DecodedTransaction } from '../utils/decodeTransactions'
 
 import type { NfdLookupResponse, NfdView } from '../hooks/useNfd'
@@ -215,8 +217,18 @@ interface WalletUIProviderProps {
    * RainbowKit integration config, created by `createRainbowKitConfig()`.
    * When provided, WalletUIProvider wraps children with WagmiProvider,
    * RainbowKitProvider, and the RainbowKitBridge — no manual setup needed.
+   *
+   * For a simpler API, pass `wagmiConfig` instead — the provider will create
+   * the RainbowKit config automatically.
    */
   rainbowkit?: RainbowKitUIConfig
+  /**
+   * wagmi Config instance (e.g. from RainbowKit's `getDefaultConfig()`).
+   * When provided (and `rainbowkit` is not), WalletUIProvider automatically
+   * creates the RainbowKit integration — no `createRainbowKitConfig` needed.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  wagmiConfig?: any
 }
 
 // Default query client configuration for NFD queries
@@ -249,6 +261,16 @@ function WalletAccountsPrefetcher({ enabled, nfdView }: { enabled: boolean; nfdV
   const { activeNetwork, activeNetworkConfig } = useNetwork()
   const isLocalnet = activeNetwork === 'localnet'
   const isTestnet = activeNetworkConfig?.isTestnet ?? false
+
+  // Invalidate account queries when the network changes so balances refresh
+  const prevNetworkRef = useRef(activeNetwork)
+  useEffect(() => {
+    if (prevNetworkRef.current !== activeNetwork) {
+      prevNetworkRef.current = activeNetwork
+      queryClient.invalidateQueries({ queryKey: ['account-info'] })
+      queryClient.invalidateQueries({ queryKey: ['account-balance'] })
+    }
+  }, [activeNetwork, queryClient])
 
   // Previous activeAddress value
   const prevActiveAddressRef = useRef<string | null>(null)
@@ -377,7 +399,22 @@ export function WalletUIProvider({
   prefetchNfdView = 'thumbnail',
   theme = 'system',
   rainbowkit,
+  wagmiConfig,
 }: WalletUIProviderProps) {
+  // Auto-create RainbowKit config from wagmiConfig when rainbowkit prop isn't provided.
+  // Uses dynamic import so wagmi/@rainbow-me/rainbowkit remain truly optional peer deps.
+  const [autoRainbowkit, setAutoRainbowkit] = useState<RainbowKitUIConfig | null>(null)
+  useEffect(() => {
+    if (rainbowkit || !wagmiConfig) return
+    let cancelled = false
+    import('../rainbowkit').then(({ createRainbowKitConfig }) => {
+      if (!cancelled) setAutoRainbowkit(createRainbowKitConfig({ wagmiConfig }))
+    })
+    return () => { cancelled = true }
+  }, [rainbowkit, wagmiConfig])
+
+  const effectiveRainbowkit = rainbowkit ?? autoRainbowkit
+
   // Use provided query client or create a default one
   const queryClient = useMemo(() => externalQueryClient || createDefaultQueryClient(), [externalQueryClient])
 
@@ -535,24 +572,34 @@ export function WalletUIProvider({
   // Auto-wire UI hooks to WalletManager
   const manager = useWalletManager()
   const { algodClient, activeWallet } = useWallet()
-  const { activeNetworkConfig } = useNetwork()
+  const { activeNetwork, activeNetworkConfig } = useNetwork()
 
   // RainbowKit integration: inject getEvmAccounts into the wallet instance
   useEffect(() => {
-    if (rainbowkit) {
+    if (effectiveRainbowkit) {
       const rkWallet = manager.wallets.find((w) => w.id === 'rainbowkit')
-      if (rkWallet && 'setGetEvmAccounts' in rkWallet) {
+      if (!rkWallet) return
+
+      if ('setGetEvmAccounts' in rkWallet) {
         ;(rkWallet as { setGetEvmAccounts: (fn: () => Promise<string[]>) => void }).setGetEvmAccounts(
-          rainbowkit.getEvmAccounts,
+          effectiveRainbowkit.getEvmAccounts,
         )
+      } else {
+        // Fallback: set the callback directly on the wallet options.
+        // Needed when the wallet class predates the public setGetEvmAccounts method.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const opts = (rkWallet as any).options
+        if (opts) {
+          opts.getEvmAccounts = effectiveRainbowkit.getEvmAccounts
+        }
       }
     } else if (manager.wallets.some((w) => w.id === 'rainbowkit')) {
       console.warn(
-        '[WalletUI] WalletManager includes a RainbowKit wallet but no `rainbowkit` prop was passed to WalletUIProvider.\n' +
-          'Import { createRainbowKitConfig } from "@txnlab/use-wallet-ui-react/rainbowkit" and pass the result as the `rainbowkit` prop.',
+        '[WalletUI] WalletManager includes a RainbowKit wallet but no `rainbowkit` or `wagmiConfig` prop was passed to WalletUIProvider.\n' +
+          'Pass `wagmiConfig` to WalletUIProvider, or import { createRainbowKitConfig } from "@txnlab/use-wallet-ui-react/rainbowkit" and pass the result as the `rainbowkit` prop.',
       )
     }
-  }, [manager, rainbowkit])
+  }, [manager, effectiveRainbowkit])
 
   // Keep wallet name and network config in refs so requestBeforeSign doesn't depend on them
   const walletNameRef = useRef<string | undefined>(undefined)
@@ -627,30 +674,33 @@ export function WalletUIProvider({
   // - For 'system', don't set the attribute so CSS media queries handle it
   const dataTheme = theme === 'system' ? undefined : theme
 
-  const wrappedChildren = rainbowkit ? (
-    <rainbowkit.Provider queryClient={queryClient} resolvedTheme={resolvedTheme} walletManager={manager}>
+  const wrappedChildren = effectiveRainbowkit ? (
+    <effectiveRainbowkit.Provider queryClient={queryClient} resolvedTheme={resolvedTheme} walletManager={manager}>
       {children}
-    </rainbowkit.Provider>
+    </effectiveRainbowkit.Provider>
   ) : (
     children
   )
 
   const content = (
     <WalletUIContext.Provider value={contextValue}>
-      <div data-wallet-theme data-theme={dataTheme}>
-        {/* Internal prefetcher component that runs automatically */}
-        <WalletAccountsPrefetcher enabled={enablePrefetching} nfdView={prefetchNfdView} />
-        {wrappedChildren}
-        {showSignDialog && extensionDetected && (
-          <ExtensionSignIndicator transactionCount={pendingSign!.transactions.length} dangerous={pendingSign!.dangerous} onReject={handleRejectSign} />
-        )}
-        {showSignDialog && !extensionDetected && (
-          <BeforeSignDialog transactions={pendingSign!.transactions} message={pendingSign!.message} dangerous={pendingSign!.dangerous} onApprove={handleApproveSign} onReject={handleRejectSign} onClose={() => setShowSignDialog(false)} signing={signing} walletName={activeWallet?.metadata?.name} algodClient={algodClient} />
-        )}
-        {pendingWelcome && (
-          <WelcomeDialog algorandAddress={pendingWelcome.algorandAddress} evmAddress={pendingWelcome.evmAddress} onDismiss={() => setPendingWelcome(null)} />
-        )}
-      </div>
+      <BridgeDialogProvider>
+        <div data-wallet-theme data-theme={dataTheme}>
+          {/* Internal prefetcher component that runs automatically */}
+          <WalletAccountsPrefetcher enabled={enablePrefetching} nfdView={prefetchNfdView} />
+          {wrappedChildren}
+          <BridgeDialog />
+          {showSignDialog && extensionDetected && (
+            <ExtensionSignIndicator transactionCount={pendingSign!.transactions.length} dangerous={pendingSign!.dangerous} onReject={handleRejectSign} />
+          )}
+          {showSignDialog && !extensionDetected && (
+            <BeforeSignDialog transactions={pendingSign!.transactions} message={pendingSign!.message} dangerous={pendingSign!.dangerous} onApprove={handleApproveSign} onReject={handleRejectSign} onClose={() => setShowSignDialog(false)} signing={signing} walletName={activeWallet?.metadata?.name} algodClient={algodClient} network={activeNetwork} />
+          )}
+          {pendingWelcome && (
+            <WelcomeDialog algorandAddress={pendingWelcome.algorandAddress} evmAddress={pendingWelcome.evmAddress} onDismiss={() => setPendingWelcome(null)} />
+          )}
+        </div>
+      </BridgeDialogProvider>
     </WalletUIContext.Provider>
   )
 

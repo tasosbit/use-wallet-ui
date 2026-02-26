@@ -16,6 +16,7 @@ export interface TransactionReviewProps {
   origin?: string
   headerAction?: ReactNode
   payloadVerified?: boolean | null
+  network?: string
 }
 
 export function TransactionReview({
@@ -31,10 +32,12 @@ export function TransactionReview({
   origin,
   headerAction,
   payloadVerified,
+  network,
 }: TransactionReviewProps) {
   const { loading, assets, appEscrows } = useTransactionData(transactions, {
     algodClient,
     getApplicationAddress,
+    network,
   })
 
   return (

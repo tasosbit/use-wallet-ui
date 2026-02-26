@@ -24,6 +24,8 @@ export interface ManagePanelProps {
   onRefresh?: () => void
   isRefreshing?: boolean
   onExplore?: () => void
+  /** When provided, the Bridge button calls this instead of navigating to the embedded bridge panel */
+  onBridgeClick?: () => void
 }
 
 const balanceFormatter = new Intl.NumberFormat(undefined, {
@@ -57,6 +59,7 @@ export function ManagePanel({
   onRefresh,
   isRefreshing,
   onExplore,
+  onBridgeClick,
 }: ManagePanelProps) {
   const [mode, setMode] = useState<'main' | 'send' | 'opt-in' | 'bridge'>('main')
   const [showAllAssets, setShowAllAssets] = useState(false)
@@ -278,8 +281,8 @@ export function ManagePanel({
             Receive
           </button>
           <button
-            onClick={() => goForward('bridge')}
-            disabled={!bridge}
+            onClick={onBridgeClick ?? (() => goForward('bridge'))}
+            disabled={!bridge && !onBridgeClick}
             className="py-2.5 px-4 bg-[var(--wui-color-bg-tertiary)] text-[var(--wui-color-text)] font-medium rounded-xl hover:brightness-90 transition-all text-sm flex items-center justify-center disabled:opacity-40 disabled:pointer-events-none"
           >
             <svg

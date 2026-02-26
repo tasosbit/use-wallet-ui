@@ -40,11 +40,16 @@ export function useAssetNameSearch(registry: UseAssetRegistryReturn): UseAssetNa
 
     setIsSearching(true)
 
+    console.log('[useAssetNameSearch] effect fired, nameInput:', nameInput)
+
     timerRef.current = setTimeout(async () => {
       try {
+        console.log('[useAssetNameSearch] searching for:', nameInput.trim())
         const found = await searchByNameRef.current(nameInput.trim())
+        console.log('[useAssetNameSearch] results:', found.length, found.slice(0, 3))
         setResults(found)
-      } catch {
+      } catch (err) {
+        console.error('[useAssetNameSearch] search error:', err)
         setResults([])
       } finally {
         setIsSearching(false)

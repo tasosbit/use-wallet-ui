@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Spinner } from './Spinner'
 
 export interface BridgeChainDisplay {
@@ -55,6 +56,7 @@ export interface BridgePanelProps {
 
   // Transfer tracking
   estimatedTimeMs: number | null
+  waitingSince: number | null
   transferStatus: BridgeTransferStatus | null
 
   // Opt-in tracking
@@ -72,7 +74,13 @@ export interface BridgePanelProps {
   onBridge: () => void
   onReset: () => void
   onRetry: () => void
-  onBack: () => void
+  onBack?: () => void
+
+  /** Hide the built-in header (useful when the parent provides its own) */
+  hideHeader?: boolean
+
+  /** Auto-focus the source chain dropdown when mounted */
+  autoFocusSourceChain?: boolean
 }
 
 export interface BridgeTransferStatus {
@@ -115,6 +123,7 @@ export function BridgePanel({
   evmAddress,
   algorandAddress,
   estimatedTimeMs,
+  waitingSince,
   transferStatus,
   optInNeeded,
   optInSigned,
@@ -127,6 +136,8 @@ export function BridgePanel({
   onReset,
   onRetry,
   onBack,
+  hideHeader,
+  autoFocusSourceChain,
 }: BridgePanelProps) {
   const sourceChain = chains.find((c) => c.chainSymbol === sourceChainSymbol) ?? null
   const sourceTokens = sourceChain?.tokens ?? []
@@ -153,29 +164,33 @@ export function BridgePanel({
   return (
     <>
       {/* Header */}
-      <div className="flex items-center gap-2 mb-4">
-        <button
-          onClick={onBack}
-          disabled={isProcessing}
-          className="-ml-1 p-1 rounded-lg hover:bg-[var(--wui-color-bg-secondary)] transition-colors text-[var(--wui-color-text-secondary)] flex items-center justify-center disabled:opacity-40"
-          title="Back"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="m15 18-6-6 6-6" />
-          </svg>
-        </button>
-        <h3 className="text-lg font-bold leading-none text-[var(--wui-color-text)] wallet-custom-font">Bridge</h3>
-      </div>
+      {!hideHeader && (
+        <div className="flex items-center gap-2 mb-4">
+          {onBack && (
+            <button
+              onClick={onBack}
+              disabled={isProcessing}
+              className="-ml-1 p-1 rounded-lg hover:bg-[var(--wui-color-bg-secondary)] transition-colors text-[var(--wui-color-text-secondary)] flex items-center justify-center disabled:opacity-40"
+              title="Back"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="m15 18-6-6 6-6" />
+              </svg>
+            </button>
+          )}
+          <h3 className="text-lg font-bold leading-none text-[var(--wui-color-text)] wallet-custom-font">Bridge</h3>
+        </div>
+      )}
 
       {/* Loading chains */}
       {chainsLoading && (
@@ -212,6 +227,7 @@ export function BridgePanel({
             <label className="block text-xs font-medium text-[var(--wui-color-text-secondary)] mb-1">From</label>
             <div className="flex gap-2">
               <select
+                autoFocus={autoFocusSourceChain}
                 value={sourceChainSymbol ?? ''}
                 onChange={(e) => onSourceChainChange(e.target.value)}
                 className="flex-1 rounded-lg border border-[var(--wui-color-border)] bg-[var(--wui-color-bg-secondary)] py-2.5 px-2 text-sm text-[var(--wui-color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--wui-color-primary)] focus:border-transparent"
@@ -294,6 +310,14 @@ export function BridgePanel({
                 </span>
               </div>
             )}
+            {estimatedTimeMs != null && estimatedTimeMs > 0 && (
+              <div className="flex justify-between items-center text-sm mt-1.5">
+                <span className="text-[var(--wui-color-text-secondary)]">Estimated time</span>
+                <span className="font-medium text-[var(--wui-color-text)]">
+                  ~{formatTimeRemaining(estimatedTimeMs)}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Addresses */}
@@ -350,6 +374,7 @@ export function BridgePanel({
         <BridgeProgress
           transferStatus={transferStatus}
           estimatedTimeMs={estimatedTimeMs}
+          waitingSince={waitingSince}
           optInNeeded={optInNeeded}
           optInSigned={optInSigned}
           watchingForFunding={watchingForFunding}
@@ -374,6 +399,11 @@ export function BridgePanel({
             />
           </svg>
           <p className="text-sm font-medium text-[var(--wui-color-text)]">Bridge complete!</p>
+          {receivedAmount && destinationTokenSymbol && (
+            <p className="mt-1.5 text-sm text-[var(--wui-color-text-secondary)]">
+              Received <span className="font-medium text-[var(--wui-color-text)]">{receivedAmount} {destinationTokenSymbol}</span>
+            </p>
+          )}
           {sourceTxId && (
             <p className="mt-1.5 text-xs text-[var(--wui-color-text-tertiary)]">
               TX: <span className="font-mono">{formatShortAddr(sourceTxId)}</span>
@@ -403,6 +433,7 @@ export function BridgePanel({
 interface BridgeProgressProps {
   transferStatus: BridgeTransferStatus | null
   estimatedTimeMs: number | null
+  waitingSince: number | null
   optInNeeded: boolean
   optInSigned: boolean
   watchingForFunding: boolean
@@ -427,9 +458,28 @@ function CheckIcon() {
   )
 }
 
+function Countdown({ estimatedTimeMs, waitingSince }: { estimatedTimeMs: number; waitingSince: number }) {
+  const [now, setNow] = useState(Date.now())
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const elapsed = now - waitingSince
+  const remaining = Math.max(0, estimatedTimeMs - elapsed)
+
+  return (
+    <p className="text-center text-xs text-[var(--wui-color-text-tertiary)] mt-3">
+      {remaining <= 0 ? 'Arriving about now' : `~${formatTimeRemaining(remaining)} remaining`}
+    </p>
+  )
+}
+
 function BridgeProgress({
   transferStatus,
   estimatedTimeMs,
+  waitingSince,
   optInNeeded,
   optInSigned,
   watchingForFunding,
@@ -445,85 +495,91 @@ function BridgeProgress({
     transferStatus.receiveConfirmations >= transferStatus.receiveConfirmationsNeeded
 
   return (
-    <div className="py-4 space-y-3">
-      <p className="text-sm font-medium text-[var(--wui-color-text)] text-center mb-3">Bridge in progress...</p>
+    <div className="py-4 flex flex-col items-center">
+      <p className="text-sm font-medium text-[var(--wui-color-text)] text-center mb-3">Bridging USDC...</p>
 
-      {/* Source confirmations */}
-      <div className="flex items-center gap-2 text-xs">
-        {sendDone ? <CheckIcon /> : <Spinner className="h-3.5 w-3.5 shrink-0" />}
-        <span className="text-[var(--wui-color-text-secondary)]">
-          Source confirmation
-          {transferStatus && !sendDone && (
-            <span className="ml-1 text-[var(--wui-color-text-tertiary)]">
-              {transferStatus.sendConfirmations}/{transferStatus.sendConfirmationsNeeded}
-            </span>
-          )}
-        </span>
-      </div>
-
-      {/* Validator signatures */}
-      <div className="flex items-center gap-2 text-xs">
-        {sigsDone ? <CheckIcon /> : <Spinner className="h-3.5 w-3.5 shrink-0" />}
-        <span className="text-[var(--wui-color-text-secondary)]">
-          Validator signatures
-          {transferStatus && !sigsDone && (
-            <span className="ml-1 text-[var(--wui-color-text-tertiary)]">
-              {transferStatus.signaturesCount}/{transferStatus.signaturesNeeded}
-            </span>
-          )}
-        </span>
-      </div>
-
-      {/* Opt-in status (conditional) */}
-      {optInNeeded && (
+      <div className="inline-flex flex-col gap-3">
+        {/* Source confirmations */}
         <div className="flex items-center gap-2 text-xs">
-          {optInConfirmed ? (
+          {sendDone ? <CheckIcon /> : <Spinner className="h-3.5 w-3.5 shrink-0" />}
+          <span className="text-[var(--wui-color-text-secondary)]">
+            Source confirmation
+            {transferStatus && !sendDone && (
+              <span className="ml-1 text-[var(--wui-color-text-tertiary)]">
+                {transferStatus.sendConfirmations}/{transferStatus.sendConfirmationsNeeded}
+              </span>
+            )}
+          </span>
+        </div>
+
+        {/* Validator signatures */}
+        <div className="flex items-center gap-2 text-xs">
+          {sigsDone ? (
             <CheckIcon />
-          ) : watchingForFunding ? (
-            <Spinner className="h-3.5 w-3.5 shrink-0" />
-          ) : optInSigned ? (
+          ) : sendDone ? (
             <Spinner className="h-3.5 w-3.5 shrink-0" />
           ) : (
             <div className="h-3.5 w-3.5 shrink-0 rounded-full border border-[var(--wui-color-border)]" />
           )}
           <span className="text-[var(--wui-color-text-secondary)]">
-            {optInConfirmed
-              ? 'USDC opt-in confirmed'
-              : watchingForFunding
-                ? 'Waiting for account funding...'
-                : optInSigned
-                  ? 'Submitting opt-in...'
-                  : 'USDC opt-in pending'}
-          </span>
-        </div>
-      )}
-
-      {/* Destination delivery */}
-      <div className="flex items-center gap-2 text-xs">
-        {receiveDone ? (
-          <CheckIcon />
-        ) : sendDone && sigsDone ? (
-          <Spinner className="h-3.5 w-3.5 shrink-0" />
-        ) : (
-          <div className="h-3.5 w-3.5 shrink-0 rounded-full border border-[var(--wui-color-border)]" />
-        )}
-        <span className="text-[var(--wui-color-text-secondary)]">
-          Destination delivery
-          {transferStatus?.receiveConfirmations != null &&
-            transferStatus.receiveConfirmationsNeeded != null &&
-            !receiveDone && (
+            Validator signatures
+            {transferStatus && sendDone && !sigsDone && (
               <span className="ml-1 text-[var(--wui-color-text-tertiary)]">
-                {transferStatus.receiveConfirmations}/{transferStatus.receiveConfirmationsNeeded}
+                {transferStatus.signaturesCount}/{transferStatus.signaturesNeeded}
               </span>
             )}
-        </span>
+          </span>
+        </div>
+
+        {/* Opt-in status (conditional) */}
+        {optInNeeded && (
+          <div className="flex items-center gap-2 text-xs">
+            {optInConfirmed ? (
+              <CheckIcon />
+            ) : watchingForFunding ? (
+              <Spinner className="h-3.5 w-3.5 shrink-0" />
+            ) : optInSigned ? (
+              <Spinner className="h-3.5 w-3.5 shrink-0" />
+            ) : (
+              <div className="h-3.5 w-3.5 shrink-0 rounded-full border border-[var(--wui-color-border)]" />
+            )}
+            <span className="text-[var(--wui-color-text-secondary)]">
+              {optInConfirmed
+                ? 'USDC opt-in confirmed'
+                : watchingForFunding
+                  ? 'Waiting for account funding...'
+                  : optInSigned
+                    ? 'Submitting opt-in...'
+                    : 'USDC opt-in pending'}
+            </span>
+          </div>
+        )}
+
+        {/* Destination delivery */}
+        <div className="flex items-center gap-2 text-xs">
+          {receiveDone ? (
+            <CheckIcon />
+          ) : sendDone && sigsDone ? (
+            <Spinner className="h-3.5 w-3.5 shrink-0" />
+          ) : (
+            <div className="h-3.5 w-3.5 shrink-0 rounded-full border border-[var(--wui-color-border)]" />
+          )}
+          <span className="text-[var(--wui-color-text-secondary)]">
+            Destination delivery
+            {transferStatus?.receiveConfirmations != null &&
+              transferStatus.receiveConfirmationsNeeded != null &&
+              !receiveDone && (
+                <span className="ml-1 text-[var(--wui-color-text-tertiary)]">
+                  {transferStatus.receiveConfirmations}/{transferStatus.receiveConfirmationsNeeded}
+                </span>
+              )}
+          </span>
+        </div>
       </div>
 
-      {/* ETA */}
-      {estimatedTimeMs != null && !receiveDone && (
-        <p className="text-center text-xs text-[var(--wui-color-text-tertiary)] mt-2">
-          Estimated time: ~{formatTimeRemaining(estimatedTimeMs)}
-        </p>
+      {/* ETA countdown */}
+      {estimatedTimeMs != null && waitingSince != null && !receiveDone && (
+        <Countdown estimatedTimeMs={estimatedTimeMs} waitingSince={waitingSince} />
       )}
     </div>
   )

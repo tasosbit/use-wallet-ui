@@ -35,6 +35,7 @@ export function useAssetRegistry(): UseAssetRegistryReturn {
   const isMainnet = activeNetwork === 'mainnet'
 
   useEffect(() => {
+    console.log('[useAssetRegistry] effect:', { isMainnet, hasAlgodClient: !!algodClient, loadingRefCurrent: loadingRef.current })
     if (!isMainnet || !algodClient || loadingRef.current) return
 
     let cancelled = false
@@ -42,6 +43,7 @@ export function useAssetRegistry(): UseAssetRegistryReturn {
     const loadRegistry = async () => {
       try {
         const lastUpdated = await AssetCache.getLastUpdated()
+        console.log('[useAssetRegistry] lastUpdated:', lastUpdated, 'stale:', lastUpdated ? Date.now() - lastUpdated > STALENESS_MS : 'no timestamp')
         if (lastUpdated && Date.now() - lastUpdated < STALENESS_MS) {
           setRegistryLoaded(true)
           return
@@ -61,6 +63,7 @@ export function useAssetRegistry(): UseAssetRegistryReturn {
         })
 
         const allAssetIds = await sdk.getAllAssetIDs()
+        console.log('[useAssetRegistry] fetched', allAssetIds.length, 'asset IDs')
         if (cancelled) return
 
         // Fetch in batches
@@ -84,8 +87,10 @@ export function useAssetRegistry(): UseAssetRegistryReturn {
 
         if (cancelled) return
         await AssetCache.setLastUpdated(Date.now())
+        console.log('[useAssetRegistry] registry fully loaded')
         setRegistryLoaded(true)
       } catch (err) {
+        console.error('[useAssetRegistry] load error:', err)
         if (!cancelled) {
           setRegistryError(err instanceof Error ? err.message : 'Failed to load asset registry')
         }
@@ -106,15 +111,20 @@ export function useAssetRegistry(): UseAssetRegistryReturn {
 
   const searchByName = useCallback(
     async (query: string, limit?: number) => {
-      const results = await AssetCache.searchByName(query, limit)
-      if (!isMainnet) return results
-
       const q = query.trim().toLowerCase()
-      const canonicalId = CANONICAL_MAINNET_ASSETS[q]
-      if (canonicalId == null) return results
+      const canonicalId = isMainnet ? CANONICAL_MAINNET_ASSETS[q] : undefined
+      console.log('[useAssetRegistry] searchByName called:', { query, q, isMainnet, canonicalId })
 
-      const match = results.find((a) => a.index === canonicalId)
-      return match ? [match] : results
+      // If searching for a canonical asset, look it up directly by ID first
+      if (canonicalId != null) {
+        const canonical = await AssetCache.getById(canonicalId)
+        console.log('[useAssetRegistry] canonical getById result:', canonical)
+        if (canonical) return [canonical]
+      }
+
+      const results = await AssetCache.searchByName(query, limit)
+      console.log('[useAssetRegistry] searchByName results:', results.length, results.slice(0, 3))
+      return results
     },
     [isMainnet],
   )

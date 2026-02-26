@@ -112,7 +112,7 @@ function searchByName(query: string, limit = 20): Promise<CachedAsset[]> {
             return
           }
           const asset = cursor.value as CachedAsset
-          if (asset.name.toLowerCase().includes(q) || asset.unitName.toLowerCase().includes(q)) {
+          if ((asset.name ?? '').toLowerCase().includes(q) || (asset.unitName ?? '').toLowerCase().includes(q)) {
             results.push(asset)
           }
           cursor.continue()
@@ -160,10 +160,23 @@ function clear(): Promise<void> {
   )
 }
 
+function getById(id: number): Promise<CachedAsset | null> {
+  return open().then(
+    (db) =>
+      new Promise((resolve, reject) => {
+        const tx = db.transaction(ASSETS_STORE, 'readonly')
+        const request = tx.objectStore(ASSETS_STORE).get(id)
+        request.onsuccess = () => resolve((request.result as CachedAsset) ?? null)
+        request.onerror = () => reject(request.error)
+      }),
+  )
+}
+
 export const AssetCache = {
   open,
   insertMany,
   searchByName,
+  getById,
   getLastUpdated,
   setLastUpdated,
   clear,

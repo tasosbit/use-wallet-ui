@@ -7,6 +7,7 @@ export function useTransactionData(
   options?: {
     algodClient?: AssetLookupClient
     getApplicationAddress?: (appId: number) => { toString(): string }
+    network?: string
   },
 ): { loading: boolean; assets: Record<string, AssetInfo>; appEscrows: Record<string, string> } {
   const algodClient = options?.algodClient
@@ -22,7 +23,7 @@ export function useTransactionData(
     return Array.from(ids)
   }, [transactions])
 
-  const { loading, assets } = useAssets(assetIds, algodClient)
+  const { loading, assets } = useAssets(assetIds, algodClient, options?.network)
 
   const appEscrows = useMemo(() => {
     if (!getApplicationAddress) return {}

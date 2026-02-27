@@ -10,8 +10,11 @@ export interface BridgeChainDisplay {
 export interface BridgeTokenDisplay {
   symbol: string
   name: string
+  decimals?: number
   chainSymbol: string
   chainName: string
+  /** Raw balance in smallest token units (decimal string). Undefined while loading. */
+  balance?: string
 }
 
 export type BridgeStatusValue =
@@ -32,6 +35,7 @@ export interface BridgePanelProps {
   // Chain/token selection
   chains: BridgeChainDisplay[]
   chainsLoading: boolean
+  balancesLoading?: boolean
   sourceChainSymbol: string | null
   onSourceChainChange: (symbol: string) => void
   sourceTokenSymbol: string | null
@@ -49,6 +53,9 @@ export interface BridgePanelProps {
   // Fee
   gasFee: string | null
   gasFeeLoading: boolean
+  gasFeeUnit: string | null
+  /** Approximate ALGO the user will receive from extra gas (e.g. "~0.123 ALGO") */
+  extraGasAlgo: string | null
 
   // Addresses
   evmAddress: string | null
@@ -97,6 +104,31 @@ function formatShortAddr(addr: string): string {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`
 }
 
+/** Format a raw balance string (smallest units) to a human-readable number with up to 2 decimal places */
+function formatTokenBalance(rawBalance: string, decimals: number): string {
+  if (decimals === 0) return rawBalance
+  const padded = rawBalance.padStart(decimals + 1, '0')
+  const whole = padded.slice(0, -decimals) || '0'
+  const frac = padded.slice(-decimals).slice(0, 2).replace(/0+$/, '')
+  const formatted = frac ? `${whole}.${frac}` : whole
+  // Add thousands separators to the whole part
+  const [w, f] = formatted.split('.')
+  const withCommas = w.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  return f ? `${withCommas}.${f}` : withCommas
+}
+
+/** Get a display label for a chain, appending token balance if available */
+function chainOptionLabel(chain: BridgeChainDisplay): string {
+  // Find the first token with a non-zero balance to show
+  for (const t of chain.tokens) {
+    if (t.balance && t.balance !== '0' && t.decimals != null) {
+      const formatted = formatTokenBalance(t.balance, t.decimals)
+      return `${chain.chainName} (${formatted} ${t.symbol})`
+    }
+  }
+  return chain.chainName
+}
+
 function formatTimeRemaining(ms: number): string {
   const totalSeconds = Math.max(0, Math.ceil(ms / 1000))
   const minutes = Math.floor(totalSeconds / 60)
@@ -120,6 +152,8 @@ export function BridgePanel({
   quoteLoading,
   gasFee,
   gasFeeLoading,
+  gasFeeUnit,
+  extraGasAlgo,
   evmAddress,
   algorandAddress,
   estimatedTimeMs,
@@ -135,12 +169,23 @@ export function BridgePanel({
   onBridge,
   onReset,
   onRetry,
+  // balancesLoading is available via props for consumers who want loading indicators
   onBack,
   hideHeader,
   autoFocusSourceChain,
 }: BridgePanelProps) {
   const sourceChain = chains.find((c) => c.chainSymbol === sourceChainSymbol) ?? null
   const sourceTokens = sourceChain?.tokens ?? []
+  const selectedSourceToken = sourceTokens.find((t) => t.symbol === sourceTokenSymbol) ?? null
+
+  // Compute human-readable balance for the selected source token
+  const sourceBalanceFloat =
+    selectedSourceToken?.balance != null && selectedSourceToken.decimals != null
+      ? parseFloat(selectedSourceToken.balance) / 10 ** selectedSourceToken.decimals
+      : null
+
+  const parsedAmount = amount ? parseFloat(amount) : 0
+  const insufficientFunds = sourceBalanceFloat != null && parsedAmount > 0 && parsedAmount > sourceBalanceFloat
 
   const isProcessing =
     status === 'approving' ||
@@ -152,12 +197,13 @@ export function BridgePanel({
     status === 'opt-in-sent'
 
   const canSubmit =
-    status === 'idle' &&
+    (status === 'idle' || status === 'error') &&
     sourceChainSymbol &&
     sourceTokenSymbol &&
     destinationTokenSymbol &&
     amount &&
-    parseFloat(amount) > 0 &&
+    parsedAmount > 0 &&
+    !insufficientFunds &&
     evmAddress &&
     algorandAddress
 
@@ -196,7 +242,7 @@ export function BridgePanel({
       {chainsLoading && (
         <div className="flex items-center justify-center py-8 text-sm text-[var(--wui-color-text-secondary)]">
           <Spinner className="h-4 w-4 mr-2" />
-          Loading bridge routes...
+          Loading bridge routes
         </div>
       )}
 
@@ -215,8 +261,8 @@ export function BridgePanel({
         </div>
       )}
 
-      {/* Form (visible in idle state) */}
-      {!chainsLoading && status === 'idle' && chains.length > 0 && (
+      {/* Form (visible in idle and error states) */}
+      {!chainsLoading && (status === 'idle' || status === 'error') && chains.length > 0 && (
         <>
           <p className="text-xs text-[var(--wui-color-text-tertiary)] mb-3">
             Bridge tokens from EVM chains to your Algorand account
@@ -234,7 +280,7 @@ export function BridgePanel({
               >
                 {chains.map((c) => (
                   <option key={c.chainSymbol} value={c.chainSymbol}>
-                    {c.chainName}
+                    {chainOptionLabel(c)}
                   </option>
                 ))}
               </select>
@@ -261,8 +307,13 @@ export function BridgePanel({
               placeholder="0.00"
               value={amount}
               onChange={(e) => onAmountChange(e.target.value.replace(/[^0-9.]/g, ''))}
-              className="w-full rounded-lg border border-[var(--wui-color-border)] bg-[var(--wui-color-bg-secondary)] py-2.5 px-3 text-sm text-[var(--wui-color-text)] placeholder:text-[var(--wui-color-text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--wui-color-primary)] focus:border-transparent"
+              className={`w-full rounded-lg border bg-[var(--wui-color-bg-secondary)] py-2.5 px-3 text-sm text-[var(--wui-color-text)] placeholder:text-[var(--wui-color-text-tertiary)] focus:outline-none focus:ring-2 focus:border-transparent ${insufficientFunds ? 'border-red-500 focus:ring-red-500/30' : 'border-[var(--wui-color-border)] focus:ring-[var(--wui-color-primary)]'}`}
             />
+            {insufficientFunds && (
+              <p className="mt-1 text-xs text-red-500">
+                Insufficient balance{sourceBalanceFloat != null ? ` (${sourceBalanceFloat.toFixed(2)} ${sourceTokenSymbol ?? ''} available)` : ''}
+              </p>
+            )}
           </div>
 
           {/* Destination: Algorand + Token */}
@@ -289,10 +340,10 @@ export function BridgePanel({
           </div>
 
           {/* Estimated receive */}
-          <div className="mb-3 rounded-lg bg-[var(--wui-color-bg-secondary)] p-3">
-            <div className="flex justify-between items-center text-sm">
+          <div className="mb-3 rounded-lg bg-[var(--wui-color-bg-secondary)] p-3 space-y-1.5">
+            <div className="flex justify-between items-center text-xs">
               <span className="text-[var(--wui-color-text-secondary)]">You receive</span>
-              <span className="font-medium text-[var(--wui-color-text)]">
+              <span className="text-[var(--wui-color-text-secondary)]">
                 {quoteLoading ? (
                   <Spinner className="h-3 w-3 inline" />
                 ) : receivedAmount ? (
@@ -302,18 +353,26 @@ export function BridgePanel({
                 )}
               </span>
             </div>
+            {extraGasAlgo && (
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-[var(--wui-color-text-secondary)]">You receive (extra gas)</span>
+                <span className="text-[var(--wui-color-text-secondary)]">
+                  {extraGasAlgo}
+                </span>
+              </div>
+            )}
             {gasFee && (
-              <div className="flex justify-between items-center text-xs mt-1.5">
-                <span className="text-[var(--wui-color-text-tertiary)]">Bridge fee</span>
-                <span className="text-[var(--wui-color-text-tertiary)]">
-                  {gasFeeLoading ? <Spinner className="h-2.5 w-2.5 inline" /> : gasFee}
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-[var(--wui-color-text-secondary)]">Network fee</span>
+                <span className="text-[var(--wui-color-text-secondary)]">
+                  {gasFeeLoading ? <Spinner className="h-2.5 w-2.5 inline" /> : `${gasFee}${gasFeeUnit ? ` ${gasFeeUnit}` : ''}`}
                 </span>
               </div>
             )}
             {estimatedTimeMs != null && estimatedTimeMs > 0 && (
-              <div className="flex justify-between items-center text-sm mt-1.5">
+              <div className="flex justify-between items-center text-xs">
                 <span className="text-[var(--wui-color-text-secondary)]">Estimated time</span>
-                <span className="font-medium text-[var(--wui-color-text)]">
+                <span className="text-[var(--wui-color-text-secondary)]">
                   ~{formatTimeRemaining(estimatedTimeMs)}
                 </span>
               </div>
@@ -336,13 +395,20 @@ export function BridgePanel({
             )}
           </div>
 
+          {/* Inline error */}
+          {status === 'error' && error && (
+            <div className="mb-3 rounded-lg bg-red-500/10 border border-red-500/20 p-2.5">
+              <p className="text-xs text-red-500 break-words">{error}</p>
+            </div>
+          )}
+
           {/* Bridge button */}
           <button
-            onClick={onBridge}
-            disabled={!canSubmit}
+            onClick={status === 'error' ? onRetry : onBridge}
+            disabled={status !== 'idle' && status !== 'error' ? true : !canSubmit}
             className="w-full py-2.5 px-4 bg-[var(--wui-color-primary)] text-white font-medium rounded-xl hover:brightness-90 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Bridge
+            {status === 'error' ? 'Try again' : 'Bridge'}
           </button>
         </>
       )}
@@ -351,27 +417,30 @@ export function BridgePanel({
       {(status === 'approving' || status === 'signing') && (
         <div className="flex items-center justify-center py-6 text-sm text-[var(--wui-color-text-secondary)]">
           <Spinner className="h-4 w-4 mr-2" />
-          {status === 'approving' ? 'Approving token...' : 'Confirm in wallet...'}
+          {status === 'approving' ? 'Approving token' : 'Confirm in wallet'}
         </div>
       )}
 
       {status === 'opting-in' && (
         <div className="flex items-center justify-center py-6 text-sm text-[var(--wui-color-text-secondary)]">
           <Spinner className="h-4 w-4 mr-2" />
-          Sign USDC opt-in for Algorand...
+          Sign USDC opt-in for Algorand
         </div>
       )}
 
       {status === 'sending' && (
         <div className="flex items-center justify-center py-6 text-sm text-[var(--wui-color-text-secondary)]">
           <Spinner className="h-4 w-4 mr-2" />
-          Sending bridge transaction...
+          Sending bridge transaction
         </div>
       )}
 
       {/* Waiting / progress */}
       {(status === 'waiting' || status === 'watching-funding' || status === 'opt-in-sent') && (
         <BridgeProgress
+          amount={amount}
+          sourceTokenSymbol={sourceTokenSymbol}
+          sourceChainName={sourceChain?.chainName ?? null}
           transferStatus={transferStatus}
           estimatedTimeMs={estimatedTimeMs}
           waitingSince={waitingSince}
@@ -415,10 +484,10 @@ export function BridgePanel({
         </div>
       )}
 
-      {/* Error */}
-      {status === 'error' && (
+      {/* Error (standalone fallback — only if form is not visible, e.g. no chains) */}
+      {status === 'error' && (chainsLoading || chains.length === 0) && (
         <div className="text-center py-3">
-          <p className="text-sm text-[var(--wui-color-danger-text)] mb-2">{error}</p>
+          <p className="text-sm text-red-500 mb-2 break-words">{error}</p>
           <button onClick={onRetry} className="text-sm text-[var(--wui-color-primary)] hover:underline">
             Try again
           </button>
@@ -431,6 +500,9 @@ export function BridgePanel({
 // -- Bridge progress sub-component --
 
 interface BridgeProgressProps {
+  amount: string
+  sourceTokenSymbol: string | null
+  sourceChainName: string | null
   transferStatus: BridgeTransferStatus | null
   estimatedTimeMs: number | null
   waitingSince: number | null
@@ -476,7 +548,35 @@ function Countdown({ estimatedTimeMs, waitingSince }: { estimatedTimeMs: number;
   )
 }
 
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false)
+
+  const copy = () => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    })
+  }
+
+  return (
+    <button
+      onClick={copy}
+      className="ml-1 p-0.5 rounded hover:bg-[var(--wui-color-bg-secondary)] text-[var(--wui-color-text-tertiary)] hover:text-[var(--wui-color-text-secondary)] transition-colors"
+      title="Copy"
+    >
+      {copied ? (
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+      ) : (
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+      )}
+    </button>
+  )
+}
+
 function BridgeProgress({
+  amount,
+  sourceTokenSymbol,
+  sourceChainName,
   transferStatus,
   estimatedTimeMs,
   waitingSince,
@@ -484,6 +584,7 @@ function BridgeProgress({
   optInSigned,
   watchingForFunding,
   optInConfirmed,
+  sourceTxId,
 }: BridgeProgressProps) {
   const sendDone =
     transferStatus != null && transferStatus.sendConfirmations >= transferStatus.sendConfirmationsNeeded
@@ -495,10 +596,25 @@ function BridgeProgress({
     transferStatus.receiveConfirmations >= transferStatus.receiveConfirmationsNeeded
 
   return (
-    <div className="py-4 flex flex-col items-center">
-      <p className="text-sm font-medium text-[var(--wui-color-text)] text-center mb-3">Bridging USDC...</p>
+    <div className="py-4 flex flex-col">
+      {/* Header */}
+      <p className="text-sm text-[var(--wui-color-text)] text-center mb-2">
+        Bridging {amount} {sourceTokenSymbol ?? 'USDC'} from {sourceChainName ?? 'EVM'} to Algorand using{' '}
+        <a href="https://allbridge.io/" target="_blank" rel="noopener noreferrer" className="text-[var(--wui-color-primary)] hover:underline">Allbridge</a>
+      </p>
 
-      <div className="inline-flex flex-col gap-3">
+      {sourceTxId && (
+        <div className="flex items-center justify-center text-xs text-[var(--wui-color-text-tertiary)] mb-2">
+          <span>{sourceChainName ?? 'Source'} Txn: <span className="font-mono">{formatShortAddr(sourceTxId)}</span></span>
+          <CopyButton text={sourceTxId} />
+        </div>
+      )}
+
+      <p className="text-[10px] text-[var(--wui-color-text-tertiary)] text-center mb-4">
+        You can safely minimize this dialog and browse, just stay within the site to ensure your transaction completes as expected.
+      </p>
+
+      <div className="inline-flex flex-col gap-3 self-center">
         {/* Source confirmations */}
         <div className="flex items-center gap-2 text-xs">
           {sendDone ? <CheckIcon /> : <Spinner className="h-3.5 w-3.5 shrink-0" />}
@@ -547,9 +663,9 @@ function BridgeProgress({
               {optInConfirmed
                 ? 'USDC opt-in confirmed'
                 : watchingForFunding
-                  ? 'Waiting for account funding...'
+                  ? 'Waiting to opt in'
                   : optInSigned
-                    ? 'Submitting opt-in...'
+                    ? 'Submitting opt-in'
                     : 'USDC opt-in pending'}
             </span>
           </div>

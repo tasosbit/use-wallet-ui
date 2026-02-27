@@ -3,6 +3,34 @@ import { TransactionFlow } from './TransactionFlow'
 import { useTransactionData } from '../hooks/useTransactionData'
 import type { TransactionData, TransactionDanger, AssetLookupClient } from '../types'
 
+/** Well-known Algorand network genesis hashes (base64-encoded). */
+const GENESIS_HASH_NETWORK: Record<string, string> = {
+  'wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=': 'MainNet',
+  'SGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiI=': 'TestNet',
+  'mFgazF+2uRS1tMiL9dsj01hJGySEmPN28B/TjjvpVW0=': 'BetaNet',
+  'kUt08LxeVAAGHnh4JoAoAMM9ql/hBwSoiFtlnKNeOxA=': 'FNet',
+  // LocalNet hashes vary per setup — resolved via genesisID fallback
+}
+
+/** LocalNet genesis IDs use "sandnet-*" or "dockernet-*" prefixes. */
+function isLocalNetGenesisID(genesisID: string): boolean {
+  return genesisID.startsWith('sandnet') || genesisID.startsWith('dockernet')
+}
+
+function resolveNetworkName(
+  genesisHash: string | null | undefined,
+  genesisID: string | null | undefined,
+): string | null {
+  if (genesisHash) {
+    const name = GENESIS_HASH_NETWORK[genesisHash]
+    if (name) return name
+  }
+  if (genesisID && isLocalNetGenesisID(genesisID)) {
+    return 'LocalNet'
+  }
+  return null
+}
+
 export interface TransactionReviewProps {
   transactions: TransactionData[]
   message: string
@@ -17,6 +45,10 @@ export interface TransactionReviewProps {
   headerAction?: ReactNode
   payloadVerified?: boolean | null
   network?: string
+  /** Base64-encoded genesis hash from the transaction group */
+  genesisHash?: string | null
+  /** Genesis ID string from the transaction group (fallback for LocalNet detection) */
+  genesisID?: string | null
 }
 
 export function TransactionReview({
@@ -33,12 +65,17 @@ export function TransactionReview({
   headerAction,
   payloadVerified,
   network,
+  genesisHash,
+  genesisID,
 }: TransactionReviewProps) {
   const { loading, assets, appEscrows } = useTransactionData(transactions, {
     algodClient,
     getApplicationAddress,
     network,
   })
+
+  const networkName = resolveNetworkName(genesisHash, genesisID)
+  const unknownNetwork = genesisHash != null && !networkName
 
   return (
     <div className="flex flex-col">
@@ -63,13 +100,28 @@ export function TransactionReview({
         <div className="px-6 pb-3 text-sm font-bold text-[var(--wui-color-danger-text)]">
           {dangerous === 'rekey'
             ? 'This transaction will rekey your account, transferring signing authority to a different address. You will no longer be able to sign transactions with your current key.'
-            : 'This transaction will close your account and transfer all remaining funds to another address. This action is irreversible.'}
+            : (() => {
+                const closeTxn = transactions.find((t) => t.closeRemainderTo)
+                if (closeTxn?.type === 'axfer' && closeTxn.assetIndex) {
+                  const info = assets[closeTxn.assetIndex.toString()]
+                  const unit = info?.unitName || info?.name || 'this asset'
+                  return `This transaction will transfer all available ${unit} to another address. Confirm that this is what you intended.`
+                }
+                return 'This transaction will transfer all available ALGO to another address. Confirm that this is what you intended.'
+              })()}
         </div>
       ) : (
         <div className="px-6 pb-3 text-sm text-[var(--wui-color-text-secondary)]">
+          {unknownNetwork && (
+            <div className="font-bold text-[var(--wui-color-danger-text)] mb-1">Warning — unknown network genesis hash</div>
+          )}
           {transactions.length === 1
-            ? 'You are about to sign the following transaction:'
-            : `You are about to sign ${transactions.length} transactions:`}
+            ? networkName
+              ? <>You are about to sign the following <strong>{networkName}</strong> transaction:</>
+              : 'You are about to sign the following transaction:'
+            : networkName
+              ? <>You are about to sign {transactions.length} <strong>{networkName}</strong> transactions:</>
+              : `You are about to sign ${transactions.length} transactions:`}
         </div>
       )}
 

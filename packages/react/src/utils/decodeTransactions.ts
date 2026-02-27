@@ -58,10 +58,12 @@ function formatAmount(amountBigInt: bigint, type: string): string {
 
 export function decodeTransactions(
   txnGroup: algosdk.Transaction[] | Uint8Array[],
-): { transactions: algosdk.Transaction[]; decodedTransactions: DecodedTransaction[]; dangerous: TransactionDanger } {
+): { transactions: algosdk.Transaction[]; decodedTransactions: DecodedTransaction[]; dangerous: TransactionDanger; genesisHash: string | null; genesisID: string | null } {
   const result: DecodedTransaction[] = []
   const transactions: algosdk.Transaction[] = []
   let dangerous: TransactionDanger = false
+  let genesisHash: string | null = null
+  let genesisID: string | null = null
 
   for (let i = 0; i < txnGroup.length; i++) {
     const item = txnGroup[i]
@@ -139,9 +141,17 @@ export function decodeTransactions(
       decoded.appIndex = Number(txn.applicationCall.appIndex)
     }
 
+    // Extract genesis hash/ID from first transaction that has them
+    if (!genesisHash && txn.genesisHash) {
+      genesisHash = Buffer.from(txn.genesisHash).toString('base64')
+    }
+    if (!genesisID && txn.genesisID) {
+      genesisID = txn.genesisID
+    }
+
     result.push(decoded)
     transactions.push(txn)
   }
 
-  return { transactions, decodedTransactions: result, dangerous }
+  return { transactions, decodedTransactions: result, dangerous, genesisHash, genesisID }
 }

@@ -76,7 +76,7 @@ export function TransactionStatus({ status, error, successMessage, onRetry, txId
 
   return (
     <div className="text-center py-3">
-      <p className="text-sm text-[var(--wui-color-danger-text)] mb-2">{error}</p>
+      <p className="text-sm text-[var(--wui-color-danger-text)] mb-2 break-words">{error}</p>
       <button onClick={onRetry} className="text-sm text-[var(--wui-color-primary)] hover:underline">
         Try again
       </button>

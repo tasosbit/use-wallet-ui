@@ -354,10 +354,14 @@ function ConnectedWalletMenuContent({ children }: ConnectedWalletMenuProps) {
                         <div className="mb-2 flex justify-between">
                           <div className="flex items-center gap-2 px-1 py-0.5">
                             <div className="h-5 w-5 overflow-hidden rounded flex items-center justify-center">
-                              {activeWallet.metadata.icon ? (
+                              {(activeWallet.activeAccount?.metadata?.connectorIcon as string) ||
+                              activeWallet.metadata.icon ? (
                                 <img
-                                  src={activeWallet.metadata.icon}
-                                  alt={`${activeWallet.metadata.name} icon`}
+                                  src={
+                                    (activeWallet.activeAccount?.metadata?.connectorIcon as string) ||
+                                    activeWallet.metadata.icon
+                                  }
+                                  alt={`${(activeWallet.activeAccount?.metadata?.connectorName as string) || activeWallet.metadata.name} icon`}
                                   className="max-w-full max-h-full"
                                 />
                               ) : (
@@ -377,7 +381,10 @@ function ConnectedWalletMenuContent({ children }: ConnectedWalletMenuProps) {
                                 </div>
                               )}
                             </div>
-                            <p className="text-sm text-[var(--wui-color-text-secondary)]">{activeWallet.metadata.name}</p>
+                            <p className="text-sm text-[var(--wui-color-text-secondary)]">
+                              {(activeWallet.activeAccount?.metadata?.connectorName as string) ||
+                                activeWallet.metadata.name}
+                            </p>
                           </div>
                           <div>
                             {
@@ -463,6 +470,7 @@ function ConnectedWalletMenuContent({ children }: ConnectedWalletMenuProps) {
                       optIn={{ ...optIn, evmAddress, explorerUrl: getTxExplorerUrl(optIn.txId) }}
                       onBridgeClick={bridge.isAvailable ? openBridge : undefined}
                       assets={assetHoldings.length > 0 ? assetHoldings : undefined}
+                      totalBalance={totalBalance}
                       availableBalance={availableBalance}
                       onRefresh={() => rqClient.invalidateQueries()}
                       isRefreshing={isFetching > 0}

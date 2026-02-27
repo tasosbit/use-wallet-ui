@@ -1,7 +1,7 @@
 import { useWallet } from '@txnlab/use-wallet-react'
 import { useQueryClient } from '@tanstack/react-query'
 import algosdk from 'algosdk'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import {
   getOrCreateSdk,
@@ -9,12 +9,15 @@ import {
   getQuote,
   getGasFees,
   getEstimatedTime,
+  getExtraGasMaxLimits,
   getTransferStatus,
+  fetchEvmTokenBalances,
   type AllbridgeCoreSdk,
   type ChainDetailsWithTokens,
   type TokenWithChainDetails,
   type TransferStatusResponse,
   type NodeRpcUrls,
+  type TokenBalanceMap,
 } from '../services/bridgeSdk'
 import { type EIP1193Provider } from '../services/evmProviderAdapter'
 import { switchToEvmChain, switchBackToAlgorand } from '../services/evmChainSwitch'
@@ -34,6 +37,8 @@ export interface BridgeToken {
   decimals: number
   chainSymbol: string
   chainName: string
+  /** Raw balance in smallest token units (decimal string). Undefined while loading. */
+  balance?: string
 }
 
 export type BridgeStatus =
@@ -61,6 +66,7 @@ export interface UseBridgeReturn {
   // Chain/token selection
   chains: BridgeChain[]
   chainsLoading: boolean
+  balancesLoading: boolean
   sourceChain: BridgeChain | null
   setSourceChain: (symbol: string) => void
   sourceToken: BridgeToken | null
@@ -77,6 +83,9 @@ export interface UseBridgeReturn {
   // Fee
   gasFee: string | null
   gasFeeLoading: boolean
+  gasFeeUnit: string | null
+  /** Approximate ALGO the user will receive from extra gas conversion (e.g. "~0.123 ALGO") */
+  extraGasAlgo: string | null
 
   // Addresses
   evmAddress: string | null
@@ -107,6 +116,23 @@ export interface UseBridgeReturn {
 // Minimum available balance in microAlgos to perform an opt-in (0.1 MBR + 0.001 fee)
 const OPT_IN_COST_MICRO = 101_000
 
+// Available balance threshold (in microAlgos) below which extra gas is requested
+// on the destination chain so the user receives ALGO for future transactions.
+const LOW_BALANCE_THRESHOLD_MICRO = 100_000
+
+// When the account is below the threshold, request this much extra gas (in USD)
+// to be converted to ALGO on the destination chain.
+const MAX_EXTRA_GAS_USD = 1
+
+// Convert a float amount string to integer (smallest token units) for ERC-20 approve.
+// Avoids floating-point by splitting at the decimal point and padding.
+function floatToSmallestUnit(amount: string, decimals: number): string {
+  const [whole = '0', frac = ''] = amount.split('.')
+  const paddedFrac = frac.padEnd(decimals, '0').slice(0, decimals)
+  return BigInt(whole + paddedFrac).toString()
+}
+
+// Map Allbridge chain symbols to their native currency ticker for fee display
 export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
   const { activeAddress, activeWallet, algodClient, signTransactions } = useWallet()
   const queryClient = useQueryClient()
@@ -116,6 +142,10 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
   const [sdkAvailable, setSdkAvailable] = useState<boolean | null>(null)
   const [allChains, setAllChains] = useState<ChainDetailsWithTokens[]>([])
   const [chainsLoading, setChainsLoading] = useState(false)
+
+  // Token balance state
+  const [tokenBalances, setTokenBalances] = useState<TokenBalanceMap>({})
+  const [balancesLoading, setBalancesLoading] = useState(false)
 
   // Selection state
   const [selectedSourceChainSymbol, setSelectedSourceChainSymbol] = useState<string | null>(null)
@@ -130,6 +160,11 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
   // Fee state
   const [gasFee, setGasFee] = useState<string | null>(null)
   const [gasFeeLoading, setGasFeeLoading] = useState(false)
+  // Raw extra gas amount in stablecoin float (e.g. "0.04000000").
+  // Mirrored as state (in addition to extraGasRef) so the quote effect can react to changes.
+  const [extraGasAmount, setExtraGasAmount] = useState<string | null>(null)
+  // Approximate ALGO received from extra gas conversion (e.g. "~0.123 ALGO")
+  const [extraGasAlgo, setExtraGasAlgo] = useState<string | null>(null)
 
   // Transfer state
   const [status, setStatus] = useState<BridgeStatus>('idle')
@@ -147,6 +182,17 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
   const signedOptInRef = useRef<Uint8Array | null>(null)
   const optInTxIdRef = useRef<string | null>(null)
 
+  // Pre-computed extra gas in stablecoin (float), set by the gas-fee effect.
+  // When non-null, handleBridge switches to WITH_STABLECOIN payment and adds
+  // the stablecoin fee + extra gas on top of the user's amount.
+  const extraGasRef = useRef<string | null>(null)
+  // Stablecoin gas fee (int format) — stored when extra gas is active so
+  // handleBridge can add it to the transfer amount.
+  const stablecoinFeeRef = useRef<{ int: string; float: string } | null>(null)
+
+  // Tracks whether the user has manually selected a source chain (prevents auto-reselection)
+  const userHasSelectedChainRef = useRef(false)
+
   // Abort ref for cleanup
   const abortRef = useRef<AbortController | null>(null)
 
@@ -158,21 +204,59 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
   // @ts-ignore - isLiquid exists on Liquid wallet metadata
   const isLiquidEvm = !!activeWallet?.metadata?.isLiquid
 
+  // Fee display unit — always the source token symbol (e.g. USDC) since fees
+  // are inclusive and paid in the source token via stablecoin payment.
+  const gasFeeUnit = selectedSourceTokenSymbol ?? null
+
   // Convert SDK chains to BridgeChain format (EVM chains only, exclude ALG)
-  const chains: BridgeChain[] = allChains
-    .filter((c) => c.chainType === 'EVM')
-    .map((c) => ({
-      chainSymbol: c.chainSymbol,
-      chainName: c.name,
-      chainId: c.chainId,
-      tokens: c.tokens.map((t: TokenWithChainDetails) => ({
-        symbol: t.symbol,
-        name: t.name,
-        decimals: t.decimals,
-        chainSymbol: c.chainSymbol,
-        chainName: c.name,
-      })),
-    }))
+  // Attach token balances and sort chains by total balance descending
+  const chains: BridgeChain[] = useMemo(() => {
+    const mapped = allChains
+      .filter((c) => c.chainType === 'EVM')
+      .map((c) => {
+        const tokens = c.tokens.map((t: TokenWithChainDetails) => {
+          const balKey = `${c.chainSymbol}:${t.symbol}`
+          const rawBal = tokenBalances[balKey]
+          return {
+            symbol: t.symbol,
+            name: t.name,
+            decimals: t.decimals,
+            chainSymbol: c.chainSymbol,
+            chainName: c.name,
+            balance: rawBal != null ? rawBal.toString() : undefined,
+          }
+        })
+        return {
+          chainSymbol: c.chainSymbol,
+          chainName: c.name,
+          chainId: c.chainId,
+          tokens,
+        }
+      })
+
+    // Sort by total normalized balance (normalize all tokens to 18 decimals for comparison)
+    const hasAnyBalance = Object.keys(tokenBalances).length > 0
+    if (hasAnyBalance) {
+      mapped.sort((a, b) => {
+        const totalA = a.tokens.reduce((sum, t) => {
+          const bal = tokenBalances[`${a.chainSymbol}:${t.symbol}`] ?? 0n
+          // Normalize: shift to 18 decimals for cross-token comparison
+          const normalized = bal * 10n ** BigInt(18 - t.decimals)
+          return sum + normalized
+        }, 0n)
+        const totalB = b.tokens.reduce((sum, t) => {
+          const bal = tokenBalances[`${b.chainSymbol}:${t.symbol}`] ?? 0n
+          const normalized = bal * 10n ** BigInt(18 - t.decimals)
+          return sum + normalized
+        }, 0n)
+        if (totalB > totalA) return 1
+        if (totalB < totalA) return -1
+        return 0
+      })
+    }
+
+    return mapped
+  }, [allChains, tokenBalances])
 
   // Resolve selected SDK tokens
   const sourceChain = chains.find((c) => c.chainSymbol === selectedSourceChainSymbol) ?? null
@@ -205,7 +289,6 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
 
     let cancelled = false
     setChainsLoading(true)
-
     ;(async () => {
       try {
         const sdk = await getOrCreateSdk(options.nodeRpcUrls)
@@ -253,7 +336,55 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
     }
   }, [isLiquidEvm]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // -- Fetch EVM token balances when evmAddress and chains are available --
+
+  useEffect(() => {
+    if (!evmAddress || allChains.length === 0) return
+
+    let cancelled = false
+    setBalancesLoading(true)
+    ;(async () => {
+      try {
+        const balances = await fetchEvmTokenBalances(evmAddress, allChains, options.nodeRpcUrls)
+        if (cancelled) return
+        setTokenBalances(balances)
+
+        // Auto-select the highest-balance chain if the user hasn't manually selected one
+        if (!userHasSelectedChainRef.current) {
+          const evmChains = allChains.filter((c) => c.chainType === 'EVM')
+          let bestChain: ChainDetailsWithTokens | null = null
+          let bestTotal = 0n
+          for (const chain of evmChains) {
+            let total = 0n
+            for (const token of chain.tokens) {
+              const bal = balances[`${chain.chainSymbol}:${token.symbol}`] ?? 0n
+              total += bal * 10n ** BigInt(18 - token.decimals)
+            }
+            if (total > bestTotal) {
+              bestTotal = total
+              bestChain = chain
+            }
+          }
+          if (bestChain && bestTotal > 0n) {
+            setSelectedSourceChainSymbol(bestChain.chainSymbol)
+            setSelectedSourceTokenSymbol(bestChain.tokens[0]?.symbol ?? null)
+          }
+        }
+      } catch (err) {
+        console.warn('[useBridge] Balance fetch failed:', err)
+      } finally {
+        if (!cancelled) setBalancesLoading(false)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [evmAddress, allChains, options.nodeRpcUrls])
+
   // -- Fetch gas fees when tokens change --
+  // Also checks whether the Algorand account has low balance and pre-computes
+  // extra gas (paid in stablecoin, converted to ALGO on the destination chain).
 
   useEffect(() => {
     const sdk = sdkRef.current
@@ -261,22 +392,88 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
     const dst = resolveDestSdkToken()
     if (!sdk || !src || !dst) {
       setGasFee(null)
+      extraGasRef.current = null
+      setExtraGasAmount(null)
+      setExtraGasAlgo(null)
       return
     }
 
     let cancelled = false
     setGasFeeLoading(true)
-
     ;(async () => {
       try {
-        const { Messenger } = await import('@allbridge/bridge-core-sdk')
+        const { Messenger, FeePaymentMethod } = await import('@allbridge/bridge-core-sdk')
+
+        // Fetch bridge gas fees (both native and stablecoin options)
         const fees = await getGasFees(sdk, src, dst, Messenger.ALLBRIDGE)
         if (cancelled) return
-        // Access native fee using the enum key
-        const nativeFee = (fees as unknown as Record<string, { float?: string }>)['native']?.float ?? null
-        setGasFee(nativeFee)
-      } catch {
-        if (!cancelled) setGasFee(null)
+        const nativeFee = fees[FeePaymentMethod.WITH_NATIVE_CURRENCY]?.float ?? null
+        const stableFee = fees[FeePaymentMethod.WITH_STABLECOIN]
+
+        // Check whether the Algorand account has low available balance.
+        // If below the threshold, include extra gas (paid in stablecoin)
+        // so the user receives ALGO for future transactions.
+        let extraGasFloat: string | null = null
+        let extraGasAlgoValue: string | null = null
+        if (algorandAddress && algodClient) {
+          let needsExtraGas = false
+          try {
+            const info = await algodClient.accountInformation(algorandAddress).do()
+            const available = Number(info.amount) - Number(info.minBalance)
+            needsExtraGas = available < LOW_BALANCE_THRESHOLD_MICRO
+          } catch {
+            // Network error or account doesn't exist — assume extra gas needed
+            needsExtraGas = true
+          }
+
+          if (needsExtraGas) {
+            try {
+              const limits = await getExtraGasMaxLimits(sdk, src, dst, Messenger.ALLBRIDGE)
+              if (cancelled) return
+              const stablecoinMax = limits.extraGasMax[FeePaymentMethod.WITH_STABLECOIN]
+              const maxFloat = parseFloat(stablecoinMax?.float ?? '0')
+              if (maxFloat > 0) {
+                // Extra gas in stablecoin terms (≈ USD for USDC/USDT).
+                // Cap precision to 8 decimal places to avoid BigInt encoding errors.
+                const raw = Math.min(MAX_EXTRA_GAS_USD, maxFloat)
+                extraGasFloat = raw.toFixed(8)
+
+                // Estimate ALGO received: proportion of max dest gas based on our request
+                const gasAmountMaxFloat = parseFloat(limits.destinationChain.gasAmountMax.float ?? '0')
+                if (gasAmountMaxFloat > 0) {
+                  const algoAmount = (raw / maxFloat) * gasAmountMaxFloat
+                  extraGasAlgoValue = `~${algoAmount.toFixed(3)} ALGO`
+                }
+              }
+              console.debug('[useBridge] Extra gas check:', { needsExtraGas, maxFloat, extraGasFloat })
+            } catch (err) {
+              console.warn('[useBridge] Could not fetch extra gas limits:', err)
+            }
+          }
+        }
+
+        if (cancelled) return
+
+        extraGasRef.current = extraGasFloat
+        // Always store the stablecoin fee so handleBridge can use inclusive
+        // stablecoin payment (fee deducted from user's amount, not paid in ETH).
+        stablecoinFeeRef.current = stableFee
+          ? { int: stableFee.int, float: stableFee.float }
+          : null
+        setExtraGasAmount(extraGasFloat)
+        setExtraGasAlgo(extraGasAlgoValue)
+        // Always display the stablecoin fee in source token units for
+        // consistency with the inclusive fee model.
+        setGasFee(stableFee?.float ?? nativeFee)
+      } catch (err) {
+        console.error('[useBridge] Fee calculation error:', err)
+        if (!cancelled) {
+          setGasFee(null)
+          extraGasRef.current = null
+          stablecoinFeeRef.current = null
+          setExtraGasAmount(null)
+          setExtraGasAlgo(null)
+        }
       } finally {
         if (!cancelled) setGasFeeLoading(false)
       }
@@ -285,7 +482,7 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
     return () => {
       cancelled = true
     }
-  }, [resolveSourceSdkToken, resolveDestSdkToken])
+  }, [resolveSourceSdkToken, resolveDestSdkToken, algorandAddress, algodClient])
 
   // -- Compute estimated transfer time when tokens change --
 
@@ -309,10 +506,15 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
       }
     })()
 
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [resolveSourceSdkToken, resolveDestSdkToken])
 
   // -- Debounced quote calculation --
+  // Fees are inclusive: the user's input is the total they spend. In stablecoin mode
+  // the SDK deducts fee + extra gas from the amount, so the quote must reflect the
+  // net amount that actually gets bridged: amount - gasFee - extraGas.
 
   useEffect(() => {
     const sdk = sdkRef.current
@@ -323,15 +525,31 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
       return
     }
 
+    // Fees are inclusive: always subtract stablecoin fee + extra gas from the
+    // input so the quote reflects what the user actually receives.
+    let quoteAmount = amount
+    if (gasFee) {
+      const extra = extraGasAmount ? parseFloat(extraGasAmount) : 0
+      const net = parseFloat(amount) - parseFloat(gasFee) - extra
+      if (net <= 0) {
+        setReceivedAmount(null)
+        return
+      }
+      // Cap decimals to source token precision (e.g. 6 for USDC) to avoid
+      // Allbridge SDK "decimals cannot be greater than N" errors.
+      quoteAmount = parseFloat(net.toFixed(src.decimals)).toString()
+    }
+
     let cancelled = false
     setQuoteLoading(true)
 
     const timer = setTimeout(async () => {
       try {
         const { Messenger } = await import('@allbridge/bridge-core-sdk')
-        const result = await getQuote(sdk, amount, src, dst, Messenger.ALLBRIDGE)
+        const result = await getQuote(sdk, quoteAmount, src, dst, Messenger.ALLBRIDGE)
         if (!cancelled) setReceivedAmount(result)
-      } catch {
+      } catch (err) {
+        console.error('[useBridge] Quote calculation error:', err)
         if (!cancelled) setReceivedAmount(null)
       } finally {
         if (!cancelled) setQuoteLoading(false)
@@ -342,7 +560,7 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
       cancelled = true
       clearTimeout(timer)
     }
-  }, [amount, resolveSourceSdkToken, resolveDestSdkToken])
+  }, [amount, gasFee, extraGasAmount, resolveSourceSdkToken, resolveDestSdkToken])
 
   // -- Transfer status polling --
 
@@ -403,7 +621,9 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
           | (() => Promise<EIP1193Provider>)
           | undefined
         if (getProvider) {
-          getProvider().then((p) => switchBackToAlgorand(p)).catch(() => {})
+          getProvider()
+            .then((p) => switchBackToAlgorand(p))
+            .catch(() => {})
         }
       }
     }
@@ -427,7 +647,12 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
     setOptInConfirmed(false)
     signedOptInRef.current = null
     optInTxIdRef.current = null
-  }, [])
+    extraGasRef.current = null
+    stablecoinFeeRef.current = null
+    userHasSelectedChainRef.current = false
+    setExtraGasAmount(null)
+    setExtraGasAlgo(null)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const retry = useCallback(() => {
     setStatus('idle')
@@ -436,6 +661,7 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
 
   const setSourceChain = useCallback(
     (symbol: string) => {
+      userHasSelectedChainRef.current = true
       setSelectedSourceChainSymbol(symbol)
       // Auto-select first token of the new chain
       const chain = chains.find((c) => c.chainSymbol === symbol)
@@ -461,16 +687,12 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
 
   // -- Opt-in helpers --
 
-  async function checkAndPrepareOptIn(
-    destSdkToken: TokenWithChainDetails,
-  ): Promise<{ needed: boolean; canAfford: boolean }> {
+  async function checkAndPrepareOptIn(destSdkToken: TokenWithChainDetails): Promise<{ needed: boolean; canAfford: boolean }> {
     if (!algorandAddress || !algodClient) return { needed: false, canAfford: false }
 
     const info = await algodClient.accountInformation(algorandAddress).do()
     const assetId = Number(destSdkToken.tokenAddress)
-    const isOptedIn = info.assets?.some(
-      (a: { assetId: number | bigint }) => Number(a.assetId) === assetId,
-    )
+    const isOptedIn = info.assets?.some((a: { assetId: number | bigint }) => Number(a.assetId) === assetId)
 
     if (isOptedIn) return { needed: false, canAfford: true }
 
@@ -578,11 +800,15 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
     setWatchingForFunding(false)
 
     try {
-      const { Messenger, FeePaymentMethod } = await import('@allbridge/bridge-core-sdk')
+      const { Messenger, FeePaymentMethod, AmountFormat } = await import('@allbridge/bridge-core-sdk')
 
       // 1. Check opt-in status on Algorand
       const optInCheck = await checkAndPrepareOptIn(dstSdkToken)
       setOptInNeeded(optInCheck.needed)
+
+      // Use the pre-computed extra gas (stablecoin, converted to ALGO on destination).
+      // Applied whenever the gas-fee effect determined the account has low balance.
+      const extraGas = extraGasRef.current ?? undefined
 
       // 2. Get EVM provider and detect current chain
       const evmProvider = await getEvmProvider()
@@ -611,37 +837,72 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
         await switchToEvmChain(evmProvider, sourceChainData.chainId)
       }
 
-      // 5. Build and send approval transaction (EVM tokens need allowance)
-      const needsApproval = await sdk.bridge.checkAllowance({
+      // 5. Fees are inclusive: the user's input amount is the total they spend.
+      //    In stablecoin mode the SDK deducts fee + extra gas from this amount.
+      const stableFee = stablecoinFeeRef.current
+      const useStablecoin = !!stableFee
+      const bridgeAmount = amount
+
+      // 6. Build and send approval transaction (EVM tokens need allowance)
+      const hasAllowance = await sdk.bridge.checkAllowance({
         token: srcSdkToken,
         owner: evmAddress,
-        amount,
+        amount: bridgeAmount,
       })
 
-      if (!needsApproval) {
+      if (!hasAllowance) {
+        // rawTxBuilder.approve expects an integer amount (smallest token units).
+        // Passing a float (e.g. "10.5") causes bn.js to throw "Invalid character".
+        const approveAmountInt = floatToSmallestUnit(bridgeAmount, srcSdkToken.decimals)
         const approveTx = await sdk.bridge.rawTxBuilder.approve({
           token: srcSdkToken,
           owner: evmAddress,
+          amount: approveAmountInt,
         })
-        await evmProvider.request({
+        const approveHash = (await evmProvider.request({
           method: 'eth_sendTransaction',
           params: [approveTx],
-        })
+        })) as string
+
+        // Wait for approval tx to be mined before building the send tx
+        let approveReceipt: unknown = null
+        while (!approveReceipt) {
+          approveReceipt = await evmProvider.request({
+            method: 'eth_getTransactionReceipt',
+            params: [approveHash],
+          })
+          if (!approveReceipt) {
+            await new Promise((r) => setTimeout(r, 2000))
+          }
+        }
       }
 
-      // 6. Build and send bridge transaction
+      // 7. Build and send bridge transaction
       setStatus('signing')
       const sendParams = {
-        amount,
+        amount: bridgeAmount,
         fromAccountAddress: evmAddress,
         toAccountAddress: algorandAddress,
         sourceToken: srcSdkToken,
         destinationToken: dstSdkToken,
         messenger: Messenger.ALLBRIDGE,
-        gasFeePaymentMethod: FeePaymentMethod.WITH_NATIVE_CURRENCY,
+        ...(useStablecoin
+          ? {
+              gasFeePaymentMethod: FeePaymentMethod.WITH_STABLECOIN,
+              fee: stableFee.int,
+              ...(extraGas ? { extraGas, extraGasFormat: AmountFormat.FLOAT } : {}),
+            }
+          : {
+              gasFeePaymentMethod: FeePaymentMethod.WITH_NATIVE_CURRENCY,
+            }),
       }
 
-      const rawTx = await sdk.bridge.rawTxBuilder.send(sendParams)
+      const rawTx = (await sdk.bridge.rawTxBuilder.send(sendParams)) as {
+        from?: string
+        to?: string
+        value?: string
+        data?: string
+      }
 
       // The Allbridge SDK returns `value` as a decimal string (designed for web3.js),
       // but EIP-1193 `eth_sendTransaction` expects hex-encoded quantities.
@@ -649,6 +910,20 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
       const eip1193Tx = {
         ...rawTx,
         value: rawTx.value ? '0x' + BigInt(rawTx.value).toString(16) : undefined,
+      }
+
+      // Estimate gas per Allbridge EVM docs — wallets usually handle this,
+      // but explicit estimation is more robust across wallet implementations.
+      try {
+        const gasEstimate = await evmProvider.request({
+          method: 'eth_estimateGas',
+          params: [eip1193Tx],
+        })
+        if (gasEstimate) {
+          ;(eip1193Tx as Record<string, unknown>).gas = gasEstimate
+        }
+      } catch {
+        // Fall back to wallet-estimated gas if estimation fails
       }
 
       setStatus('sending')
@@ -689,6 +964,7 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
 
       // 11. Transfer status polling takes over via the useEffect above
     } catch (err) {
+      console.error('[useBridge] Bridge failed:', err)
       setStatus('error')
       setError(err instanceof Error ? err.message : 'Bridge failed')
 
@@ -717,6 +993,7 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
     isAvailable: isLiquidEvm && sdkAvailable !== false,
     chains,
     chainsLoading,
+    balancesLoading,
     sourceChain,
     setSourceChain,
     sourceToken,
@@ -729,6 +1006,8 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
     quoteLoading,
     gasFee,
     gasFeeLoading,
+    gasFeeUnit,
+    extraGasAlgo,
     evmAddress,
     algorandAddress,
     estimatedTimeMs,

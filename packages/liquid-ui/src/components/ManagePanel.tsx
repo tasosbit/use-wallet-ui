@@ -20,6 +20,7 @@ export interface ManagePanelProps {
   optIn?: Omit<ReceivePanelProps, 'onBack'>
   bridge?: Omit<BridgePanelProps, 'onBack'>
   assets?: AssetHoldingDisplay[]
+  totalBalance?: number | null
   availableBalance?: number | null
   onRefresh?: () => void
   isRefreshing?: boolean
@@ -55,6 +56,7 @@ export function ManagePanel({
   optIn,
   bridge,
   assets,
+  totalBalance,
   availableBalance,
   onRefresh,
   isRefreshing,
@@ -79,7 +81,7 @@ export function ManagePanel({
   let content: React.ReactNode
 
   if (mode === 'send' && send) {
-    content = <SendPanel {...send} accountAssets={assets} availableBalance={availableBalance} onBack={() => goBack(send.reset)} />
+    content = <SendPanel {...send} accountAssets={assets} totalBalance={totalBalance} availableBalance={availableBalance} onBack={() => goBack(send.reset)} />
   } else if (mode === 'opt-in' && optIn) {
     content = <ReceivePanel {...optIn} onBack={() => goBack(optIn.reset)} />
   } else if (mode === 'bridge' && bridge) {

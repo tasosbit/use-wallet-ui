@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { AssetHoldingDisplay } from './ManagePanel'
 import { Spinner } from './Spinner'
 import { TransactionStatus, type TransactionStatusValue } from './TransactionStatus'
 
 const FEE_RESERVE = 0.1
+const MIN_TXN_FEE = 0.001
+const BASE_MBR = 0.1
 
 export interface SendPanelProps {
   sendType: 'algo' | 'asa'
@@ -19,9 +21,14 @@ export interface SendPanelProps {
   assetLookupError: string | null
   receiverOptInStatus?: 'idle' | 'checking' | 'opted-in' | 'not-opted-in'
   receiverAddressError?: string | null
+  optOut?: boolean
+  setOptOut?: (value: boolean) => void
+  closeAlgoAccount?: boolean
+  setCloseAlgoAccount?: (value: boolean) => void
   txId?: string | null
   explorerUrl?: string | null
   accountAssets?: AssetHoldingDisplay[]
+  totalBalance?: number | null
   availableBalance?: number | null
   status: TransactionStatusValue
   error: string | null
@@ -45,9 +52,14 @@ export function SendPanel({
   assetLookupError,
   receiverOptInStatus,
   receiverAddressError,
+  optOut,
+  setOptOut,
+  closeAlgoAccount: _closeAlgoAccount,
+  setCloseAlgoAccount,
   txId,
   explorerUrl,
   accountAssets,
+  totalBalance,
   availableBalance,
   status,
   error,
@@ -74,20 +86,53 @@ export function SendPanel({
 
   const sendLabel = sendType === 'algo' ? 'ALGO' : assetInfo?.unitName || assetInfo?.name || 'Asset'
 
-  // Available balance label
-  const availableLabel =
-    sendType === 'algo' && availableBalance != null
-      ? `Available: ${availableBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })} ALGO`
-      : sendType === 'asa' && selectedAsset
-        ? `Available: ${selectedAsset.amount} ${selectedAsset.unitName || selectedAsset.name}`
-        : null
-
   const [reserveFees, setReserveFees] = useState(true)
   const [showReserveOption, setShowReserveOption] = useState(false)
 
+  // Account can close out when MBR is baseline (no asset opt-ins)
+  const canCloseOut =
+    totalBalance != null &&
+    availableBalance != null &&
+    Math.abs(totalBalance - availableBalance - BASE_MBR) < 0.000001
+
+  // When closing out, use total balance; otherwise use available balance
+  const isClosingOut = showReserveOption && !reserveFees && canCloseOut
+
+  // Sync closeAlgoAccount flag with closing-out state
+  useEffect(() => {
+    setCloseAlgoAccount?.(isClosingOut)
+  }, [isClosingOut, setCloseAlgoAccount])
+
+  // Balance label — shows "Total:" when closing out, "Available:" otherwise
+  const algoBalanceLabel = (() => {
+    if (sendType !== 'algo') return null
+    if (isClosingOut && totalBalance != null) {
+      return `Total: ${totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })} ALGO`
+    }
+    if (availableBalance != null) {
+      return `Available: ${availableBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })} ALGO`
+    }
+    return null
+  })()
+
+  const availableLabel =
+    algoBalanceLabel ??
+    (sendType === 'asa' && selectedAsset
+      ? `Available: ${selectedAsset.amount} ${selectedAsset.unitName || selectedAsset.name}`
+      : null)
+
   const computeAlgoMax = (reserve: boolean) => {
+    if (reserve) {
+      if (availableBalance == null) return '0'
+      const max = Math.max(0, availableBalance - FEE_RESERVE)
+      return max.toFixed(6).replace(/\.?0+$/, '') || '0'
+    }
+    if (canCloseOut && totalBalance != null) {
+      const max = Math.max(0, totalBalance - MIN_TXN_FEE)
+      return max.toFixed(6).replace(/\.?0+$/, '') || '0'
+    }
     if (availableBalance == null) return '0'
-    const max = Math.max(0, reserve ? availableBalance - FEE_RESERVE : availableBalance)
+    const max = Math.max(0, availableBalance)
     return max.toFixed(6).replace(/\.?0+$/, '') || '0'
   }
 
@@ -107,13 +152,23 @@ export function SendPanel({
     setAmount(computeAlgoMax(next))
   }
 
-  // Overspend check
+  // Overspend check — use totalBalance when closing out
   const parsedAmount = amount !== '' ? parseFloat(amount) : NaN
+  const algoSpendLimit = isClosingOut ? (totalBalance ?? availableBalance) : availableBalance
   const isOverspend =
     !isNaN(parsedAmount) &&
     parsedAmount > 0 &&
-    ((sendType === 'algo' && availableBalance != null && parsedAmount > availableBalance) ||
+    ((sendType === 'algo' && algoSpendLimit != null && parsedAmount > algoSpendLimit) ||
       (sendType === 'asa' && selectedAsset != null && parsedAmount > parseFloat(selectedAsset.amount)))
+
+  // Full balance ASA send — show opt-out option
+  const isFullAsaAmount =
+    sendType === 'asa' &&
+    selectedAsset != null &&
+    amount !== '' &&
+    amount === selectedAsset.amount
+
+  const optOutLabel = selectedAsset?.unitName || selectedAsset?.name || assetInfo?.unitName || assetInfo?.name || 'this asset'
 
   return (
     <>
@@ -145,10 +200,10 @@ export function SendPanel({
       {status === 'idle' && (
         <>
           {/* Label */}
-          <p className="text-xs text-[var(--wui-color-text-tertiary)] mb-2">Send ALGO or assets to any Algorand address</p>
+          <p className="text-xs text-[var(--wui-color-text-secondary)] mb-2">Send ALGO or assets to any Algorand address</p>
 
           {/* Available balance */}
-          {availableLabel && <p className="self-end text-xs text-[var(--wui-color-text-secondary)] mb-1">{availableLabel}</p>}
+          {availableLabel && <p className="self-end text-xs text-[var(--wui-color-text-tertiary)] mb-1">{availableLabel}</p>}
 
           {/* Amount + asset selector */}
           <div className="mb-3 flex gap-2">
@@ -208,7 +263,7 @@ export function SendPanel({
                   Looking up asset...
                 </div>
               )}
-              {assetLookupError && <p className="mb-3 text-xs text-[var(--wui-color-danger-text)]">{assetLookupError}</p>}
+              {assetLookupError && <p className="mb-3 text-xs text-[var(--wui-color-danger-text)] break-words">{assetLookupError}</p>}
             </>
           )}
 
@@ -224,11 +279,31 @@ export function SendPanel({
           </div>
 
           {/* Invalid receiver address */}
-          {receiverAddressError && <p className="mb-3 text-xs text-[var(--wui-color-danger-text)]">{receiverAddressError}</p>}
+          {receiverAddressError && <p className="mb-3 text-xs text-[var(--wui-color-danger-text)] break-words">{receiverAddressError}</p>}
 
           {/* Receiver opt-in check feedback */}
           {sendType === 'asa' && receiverOptInStatus === 'not-opted-in' && (
             <p className="mb-3 text-xs text-[var(--wui-color-danger-text)]">Receiver has not opted into this asset</p>
+          )}
+
+          {/* Opt-out checkbox (shown when sending full ASA balance) */}
+          {isFullAsaAmount && setOptOut && (
+            <div className="mb-3">
+              <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={optOut ?? false}
+                  onChange={() => setOptOut(!optOut)}
+                  className="accent-[var(--wui-color-primary)] h-3.5 w-3.5"
+                />
+                <span className="text-xs text-[var(--wui-color-text-secondary)]">Opt out of {optOutLabel}</span>
+              </label>
+              {optOut && (
+                <p className="mt-1 ml-5 text-xs text-[var(--wui-color-text-tertiary)]">
+                  You will not be able to receive {optOutLabel} until you opt back in.
+                </p>
+              )}
+            </div>
           )}
 
           {/* Send button */}

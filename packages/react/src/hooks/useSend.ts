@@ -30,6 +30,10 @@ export interface UseSendReturn {
   assetLookupError: string | null
   receiverOptInStatus: ReceiverOptInStatus
   receiverAddressError: string | null
+  optOut: boolean
+  setOptOut: (value: boolean) => void
+  closeAlgoAccount: boolean
+  setCloseAlgoAccount: (value: boolean) => void
   txId: string | null
   status: 'idle' | 'signing' | 'sending' | 'success' | 'error'
   error: string | null
@@ -52,6 +56,8 @@ export function useSend(): UseSendReturn {
   const lookup = useAssetLookup({ enabled: sendType === 'asa' })
 
   const [receiverOptInStatus, setReceiverOptInStatus] = useState<ReceiverOptInStatus>('idle')
+  const [optOut, setOptOut] = useState(false)
+  const [closeAlgoAccount, setCloseAlgoAccount] = useState(false)
 
   const receiverAddressError: string | null =
     receiver.length > 0 && !algosdk.isValidAddress(receiver)
@@ -104,6 +110,8 @@ export function useSend(): UseSendReturn {
     setAmount('')
     lookup.reset()
     setReceiverOptInStatus('idle')
+    setOptOut(false)
+    setCloseAlgoAccount(false)
     setTxId(null)
     setStatus('idle')
     setError(null)
@@ -131,6 +139,7 @@ export function useSend(): UseSendReturn {
           sender: activeAddress,
           receiver,
           amount: amountMicroAlgos,
+          closeRemainderTo: closeAlgoAccount ? receiver : undefined,
           suggestedParams,
         })
       } else {
@@ -141,6 +150,7 @@ export function useSend(): UseSendReturn {
           receiver,
           amount: baseUnits,
           assetIndex: lookup.assetInfo.index,
+          closeRemainderTo: optOut ? receiver : undefined,
           suggestedParams,
         })
       }
@@ -163,7 +173,7 @@ export function useSend(): UseSendReturn {
       setStatus('error')
       setError(err instanceof Error ? err.message : 'Send failed')
     }
-  }, [sendType, amount, receiver, lookup.assetInfo, activeAddress, algodClient, signTransactions, queryClient])
+  }, [sendType, amount, receiver, optOut, closeAlgoAccount, lookup.assetInfo, activeAddress, algodClient, signTransactions, queryClient])
 
   return {
     sendType,
@@ -179,6 +189,10 @@ export function useSend(): UseSendReturn {
     assetLookupError: lookup.error,
     receiverOptInStatus,
     receiverAddressError,
+    optOut,
+    setOptOut,
+    closeAlgoAccount,
+    setCloseAlgoAccount,
     txId,
     status,
     error,

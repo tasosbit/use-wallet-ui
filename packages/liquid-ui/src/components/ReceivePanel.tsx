@@ -201,7 +201,7 @@ export function ReceivePanel({
 
           {/* ID mode: Lookup error */}
           {!isNameMode && assetLookupError && (
-            <div className="py-3 text-center text-sm text-[var(--wui-color-danger-text)]">{assetLookupError}</div>
+            <div className="py-3 text-center text-sm text-[var(--wui-color-danger-text)] break-words">{assetLookupError}</div>
           )}
 
           {/* ID mode: Asset result */}

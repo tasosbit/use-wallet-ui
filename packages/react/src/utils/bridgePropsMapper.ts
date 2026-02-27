@@ -10,8 +10,16 @@ export function mapBridgeToPanelProps(
   onBack?: () => void,
 ): BridgePanelProps {
   return {
-    chains: bridge.chains,
+    chains: bridge.chains.map((c) => ({
+      ...c,
+      tokens: c.tokens.map((t) => ({
+        ...t,
+        decimals: t.decimals,
+        balance: t.balance,
+      })),
+    })),
     chainsLoading: bridge.chainsLoading,
+    balancesLoading: bridge.balancesLoading,
     sourceChainSymbol: bridge.sourceChain?.chainSymbol ?? null,
     onSourceChainChange: bridge.setSourceChain,
     sourceTokenSymbol: bridge.sourceToken?.symbol ?? null,
@@ -25,6 +33,8 @@ export function mapBridgeToPanelProps(
     quoteLoading: bridge.quoteLoading,
     gasFee: bridge.gasFee,
     gasFeeLoading: bridge.gasFeeLoading,
+    gasFeeUnit: bridge.gasFeeUnit,
+    extraGasAlgo: bridge.extraGasAlgo,
     evmAddress: bridge.evmAddress,
     algorandAddress: bridge.algorandAddress,
     estimatedTimeMs: bridge.estimatedTimeMs,

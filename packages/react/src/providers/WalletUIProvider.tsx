@@ -156,6 +156,8 @@ interface PendingSignRequest {
   transactions: DecodedTransaction[]
   dangerous: TransactionDanger
   message: string
+  genesisHash: string | null
+  genesisID: string | null
   resolve: () => void
   reject: (error: Error) => void
 }
@@ -485,7 +487,7 @@ export function WalletUIProvider({
 
   const requestBeforeSign = useCallback((txnGroup: algosdk.Transaction[] | Uint8Array[]) => {
     return new Promise<void>((resolve, reject) => {
-      const { decodedTransactions, transactions, dangerous } = decodeTransactions(txnGroup)
+      const { decodedTransactions, transactions, dangerous, genesisHash, genesisID } = decodeTransactions(txnGroup)
       const messageRaw = LiquidEvmSdk.getSignPayload(transactions)
       const message = `0x${Buffer.from(messageRaw).toString('hex')}`
 
@@ -494,7 +496,7 @@ export function WalletUIProvider({
         resolve()
       }
 
-      setPendingSign({ transactions: decodedTransactions, message, dangerous, resolve: wrappedResolve, reject })
+      setPendingSign({ transactions: decodedTransactions, message, dangerous, genesisHash, genesisID, resolve: wrappedResolve, reject })
       setShowSignDialog(true)
 
       if (extensionDetected) {
@@ -694,7 +696,7 @@ export function WalletUIProvider({
             <ExtensionSignIndicator transactionCount={pendingSign!.transactions.length} dangerous={pendingSign!.dangerous} onReject={handleRejectSign} />
           )}
           {showSignDialog && !extensionDetected && (
-            <BeforeSignDialog transactions={pendingSign!.transactions} message={pendingSign!.message} dangerous={pendingSign!.dangerous} onApprove={handleApproveSign} onReject={handleRejectSign} onClose={() => setShowSignDialog(false)} signing={signing} walletName={activeWallet?.metadata?.name} algodClient={algodClient} network={activeNetwork} />
+            <BeforeSignDialog transactions={pendingSign!.transactions} message={pendingSign!.message} dangerous={pendingSign!.dangerous} genesisHash={pendingSign!.genesisHash} genesisID={pendingSign!.genesisID} onApprove={handleApproveSign} onReject={handleRejectSign} onClose={() => setShowSignDialog(false)} signing={signing} walletName={activeWallet?.metadata?.name} algodClient={algodClient} network={activeNetwork} />
           )}
           {pendingWelcome && (
             <WelcomeDialog algorandAddress={pendingWelcome.algorandAddress} evmAddress={pendingWelcome.evmAddress} onDismiss={() => setPendingWelcome(null)} />

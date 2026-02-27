@@ -54,8 +54,8 @@ export function WelcomeContent({
 
       {/* Content */}
       <div id={descriptionId} className="px-6 pb-4 space-y-4">
-        <p className="text-sm text-[var(--wui-color-text-secondary)]">
-          You can use Algorand with your very own Liquid EVM account, which wraps your EVM private key, preserving full
+        <p className="text-sm text-[var(--wui-color-text)]">
+          You can use Algorand with your very own "Liquid EVM account". This wraps your EVM private key, preserving full
           self-custodial control.{' '}
           <a
             className="text-[var(--wui-color-link)] hover:text-[var(--wui-color-link-hover)]"
@@ -72,9 +72,9 @@ export function WelcomeContent({
 
         <div className="!my-4 rounded-xl border border-[var(--wui-color-border)] bg-[var(--wui-color-bg-secondary)] p-3 space-y-2">
           <div className="flex justify-between items-center text-xs">
-            <span className="text-[var(--wui-color-text-tertiary)]">Your EVM Address</span>
+            <span className="text-[var(--wui-color-text)]">Your EVM Address</span>
             <span className="flex items-center gap-1.5">
-              <span className="text-[var(--wui-color-text-secondary)] font-mono">{shortEvmAddress}</span>
+              <span className="text-[var(--wui-color-text)] font-mono">{shortEvmAddress}</span>
               <button
                 onClick={() => handleCopy(evmAddress, 'evm')}
                 className="text-[var(--wui-color-text-tertiary)] hover:text-[var(--wui-color-text-secondary)] transition-colors"
@@ -103,9 +103,9 @@ export function WelcomeContent({
             </span>
           </div>
           <div className="flex justify-between items-center text-xs">
-            <span className="text-[var(--wui-color-text-tertiary)]">Your Algorand Address</span>
+            <span className="text-[var(--wui-color-text)]">Your Algorand Address</span>
             <span className="flex items-center gap-1.5">
-              <span className="text-[var(--wui-color-text-secondary)] font-mono">{shortAlgorandAddress}</span>
+              <span className="text-[var(--wui-color-text)] font-mono">{shortAlgorandAddress}</span>
               <button
                 onClick={() => handleCopy(algorandAddress, 'algorand')}
                 className="text-[var(--wui-color-text-tertiary)] hover:text-[var(--wui-color-text-secondary)] transition-colors"
@@ -135,7 +135,7 @@ export function WelcomeContent({
           </div>
         </div>
 
-        <p className="text-sm text-[var(--wui-color-text-secondary)]">
+        <p className="text-sm text-[var(--wui-color-text)]">
           To get started,{' '}
           <a className="text-[var(--wui-color-link)] hover:text-[var(--wui-color-link-hover)]" rel="noopener noreferrer" target="_blank" href="https://algorand.co/ecosystem/directory?tags=CEX">
             fund
@@ -161,7 +161,7 @@ export function WelcomeContent({
         </button>
         <button
           onClick={onClose}
-          className="w-full py-2.5 px-4 bg-[var(--wui-color-bg-tertiary)] text-[var(--wui-color-text-secondary)] font-medium rounded-xl hover:brightness-90 transition-all text-sm"
+          className="w-full py-2.5 px-4 bg-[var(--wui-color-bg-tertiary)] text-[var(--wui-color-text)] font-medium rounded-xl hover:brightness-90 transition-all text-sm"
         >
           Close
         </button>

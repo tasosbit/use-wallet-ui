@@ -97,10 +97,11 @@ export function createGetEvmAccounts(
               unwatchFn = null
               // Delay briefly so RainbowKit can detect the connection and
               // close its modal before our connect() flow continues.
+              const address = account.address
               setTimeout(() => {
                 const addrs: string[] = account.addresses
-                  ? [...account.addresses].filter((a): a is string => typeof a === 'string')
-                  : [account.address]
+                  ? [...account.addresses].filter((a): a is `0x${string}` => a != null)
+                  : [address]
                 done(addrs)
               }, 200)
             }

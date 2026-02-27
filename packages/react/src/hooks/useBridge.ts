@@ -12,6 +12,7 @@ import {
   getExtraGasMaxLimits,
   getTransferStatus,
   fetchEvmTokenBalances,
+  DEFAULT_RPC_URLS,
   type AllbridgeCoreSdk,
   type ChainDetailsWithTokens,
   type TokenWithChainDetails,
@@ -178,6 +179,9 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
   const [estimatedTimeMs, setEstimatedTimeMs] = useState<number | null>(null)
   const [waitingSince, setWaitingSince] = useState<number | null>(null)
   const [transferStatus, setTransferStatus] = useState<TransferStatusResponse | null>(null)
+  // Direct source chain confirmation counts (independent of Allbridge indexing lag)
+  const [sourceConfirmedRound, setSourceConfirmedRound] = useState<number | null>(null)
+  const [localSendConfirmations, setLocalSendConfirmations] = useState<number>(0)
 
   // Opt-in state
   const [optInNeeded, setOptInNeeded] = useState(false)
@@ -691,6 +695,85 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
     return () => controller.abort()
   }, [status, sourceTxId, selectedSourceChainSymbol])
 
+  // -- Direct source chain confirmation polling --
+  // Runs in parallel with Allbridge polling to provide real-time confirmation counts.
+  // Uses Math.max in the return value to show whichever is higher.
+
+  useEffect(() => {
+    if (status !== 'waiting' || !sourceTxId || !selectedSourceChainSymbol) return
+
+    const controller = new AbortController()
+
+    const pollAlgorand = async () => {
+      if (!sourceConfirmedRound || !algodClient) return
+      while (!controller.signal.aborted) {
+        try {
+          const nodeStatus = await algodClient.status().do()
+          const lastRound = Number(nodeStatus.lastRound)
+          setLocalSendConfirmations(lastRound - sourceConfirmedRound + 1)
+        } catch {
+          // ignore
+        }
+        await new Promise<void>((resolve) => {
+          const t = setTimeout(resolve, 5000)
+          controller.signal.addEventListener('abort', () => {
+            clearTimeout(t)
+            resolve()
+          })
+        })
+      }
+    }
+
+    const pollEvm = async () => {
+      const rpcUrl = DEFAULT_RPC_URLS[selectedSourceChainSymbol]
+      if (!rpcUrl) return
+      let txBlock: number | null = null
+      while (!controller.signal.aborted) {
+        try {
+          if (txBlock === null) {
+            const res = await fetch(rpcUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getTransactionReceipt', params: [sourceTxId] }),
+            })
+            const json = (await res.json()) as { result?: { blockNumber?: string } | null }
+            if (json.result?.blockNumber) {
+              txBlock = parseInt(json.result.blockNumber, 16)
+            }
+          }
+          if (txBlock !== null) {
+            const res = await fetch(rpcUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_blockNumber', params: [] }),
+            })
+            const json = (await res.json()) as { result?: string }
+            if (json.result) {
+              setLocalSendConfirmations(parseInt(json.result, 16) - txBlock + 1)
+            }
+          }
+        } catch {
+          // ignore
+        }
+        await new Promise<void>((resolve) => {
+          const t = setTimeout(resolve, 5000)
+          controller.signal.addEventListener('abort', () => {
+            clearTimeout(t)
+            resolve()
+          })
+        })
+      }
+    }
+
+    if (sourceIsAlgorand) {
+      pollAlgorand()
+    } else {
+      pollEvm()
+    }
+
+    return () => controller.abort()
+  }, [status, sourceTxId, sourceIsAlgorand, sourceConfirmedRound, algodClient, selectedSourceChainSymbol])
+
   // -- Cleanup: switch back to Algorand chain on unmount --
 
   useEffect(() => {
@@ -732,6 +815,8 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
     userHasSelectedChainRef.current = false
     setExtraGasAmount(null)
     setExtraGasAlgo(null)
+    setSourceConfirmedRound(null)
+    setLocalSendConfirmations(0)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const retry = useCallback(() => {
@@ -905,6 +990,8 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
     setOptInSigned(false)
     setOptInConfirmed(false)
     setWatchingForFunding(false)
+    setSourceConfirmedRound(null)
+    setLocalSendConfirmations(0)
 
     try {
       const { Messenger, FeePaymentMethod } = await import('@allbridge/bridge-core-sdk')
@@ -967,7 +1054,9 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
       const { txid } = await algodClient.sendRawTransaction(signedBytes).do()
       // Wait for confirmation using whichever txid we have
       const confirmTxId = appCallTxId ?? txid
-      await algosdk.waitForConfirmation(algodClient, confirmTxId, 4)
+      const txInfo = await algosdk.waitForConfirmation(algodClient, confirmTxId, 4)
+      const confirmedRound = Number((txInfo as unknown as Record<string, unknown>)['confirmed-round'])
+      setSourceConfirmedRound(confirmedRound)
 
       // Use the app call txid for status tracking (Allbridge expects it)
       setSourceTxId(confirmTxId)
@@ -1018,6 +1107,8 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
     setOptInSigned(false)
     setOptInConfirmed(false)
     setWatchingForFunding(false)
+    setSourceConfirmedRound(null)
+    setLocalSendConfirmations(0)
 
     try {
       const { Messenger, FeePaymentMethod, AmountFormat } = await import('@allbridge/bridge-core-sdk')
@@ -1246,7 +1337,17 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
     algorandAddress,
     estimatedTimeMs,
     waitingSince,
-    transferStatus,
+    transferStatus: transferStatus
+      ? {
+          ...transferStatus,
+          send: transferStatus.send
+            ? {
+                ...transferStatus.send,
+                confirmations: Math.max(transferStatus.send.confirmations, localSendConfirmations),
+              }
+            : transferStatus.send,
+        }
+      : null,
     optInNeeded,
     optInSigned,
     watchingForFunding,

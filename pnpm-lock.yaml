@@ -325,7 +325,7 @@ importers:
         specifier: 2.2.9
         version: 2.2.9(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@tanstack/react-query':
-        specifier: 5.90.21
+        specifier: '>=5.0.0'
         version: 5.90.21(react@19.2.4)
       '@txnlab/use-wallet-react':
         specifier: link:../../../use-wallet/packages/use-wallet-react

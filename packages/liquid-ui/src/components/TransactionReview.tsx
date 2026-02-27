@@ -117,10 +117,10 @@ export function TransactionReview({
           )}
           {transactions.length === 1
             ? networkName
-              ? <>You are about to sign the following <strong>{networkName}</strong> transaction:</>
+              ? <>You are about to sign the following transaction on <strong>{networkName}</strong>:</>
               : 'You are about to sign the following transaction:'
             : networkName
-              ? <>You are about to sign {transactions.length} <strong>{networkName}</strong> transactions:</>
+              ? <>You are about to sign {transactions.length} transactions on <strong>{networkName}</strong>:</>
               : `You are about to sign ${transactions.length} transactions:`}
         </div>
       )}

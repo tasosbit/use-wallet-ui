@@ -142,8 +142,21 @@ function ConnectedWalletMenuContent({ children }: ConnectedWalletMenuProps) {
     whileElementsMounted: autoUpdate,
   })
 
+  const txInProgress =
+    send.status === 'signing' ||
+    send.status === 'sending' ||
+    optIn.status === 'signing' ||
+    optIn.status === 'sending' ||
+    bridge.status === 'approving' ||
+    bridge.status === 'signing' ||
+    bridge.status === 'sending' ||
+    bridge.status === 'opting-in' ||
+    bridge.status === 'waiting' ||
+    bridge.status === 'watching-funding' ||
+    bridge.status === 'opt-in-sent'
+
   const click = useClick(context)
-  const dismiss = useDismiss(context, { outsidePressEvent: 'mousedown' })
+  const dismiss = useDismiss(context, { outsidePressEvent: 'mousedown', enabled: !txInProgress })
   const { getReferenceProps, getFloatingProps } = useInteractions([click, dismiss])
 
   const labelId = useId()

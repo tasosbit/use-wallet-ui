@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { CopyButton } from './CopyButton'
 import { Spinner } from './Spinner'
 
 export interface BridgeChainDisplay {
@@ -480,7 +481,6 @@ export function BridgePanel({
               clipRule="evenodd"
             />
           </svg>
-          <p className="text-sm font-medium text-[var(--wui-color-text)]">Bridge complete!</p>
           {receivedAmount && destinationTokenSymbol && (
             <p className="mt-1.5 text-sm text-[var(--wui-color-text-secondary)]">
               Received{' '}
@@ -490,8 +490,9 @@ export function BridgePanel({
             </p>
           )}
           {sourceTxId && (
-            <p className="mt-1.5 text-xs text-[var(--wui-color-text-tertiary)]">
+            <p className="mt-1.5 text-xs text-[var(--wui-color-text-tertiary)] flex items-center justify-center gap-1">
               TX: <span className="font-mono">{formatShortAddr(sourceTxId)}</span>
+              <CopyButton text={sourceTxId} variant="icon" title="Copy transaction ID" />
             </p>
           )}
           <button onClick={onReset} className="mt-3 text-sm text-[var(--wui-color-primary)] hover:underline">
@@ -560,55 +561,6 @@ function Countdown({ estimatedTimeMs, waitingSince }: { estimatedTimeMs: number;
   )
 }
 
-function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false)
-
-  const copy = () => {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    })
-  }
-
-  return (
-    <button
-      onClick={copy}
-      className="ml-1 p-0.5 rounded hover:bg-[var(--wui-color-bg-secondary)] text-[var(--wui-color-text-tertiary)] hover:text-[var(--wui-color-text-secondary)] transition-colors"
-      title="Copy"
-    >
-      {copied ? (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M20 6 9 17l-5-5" />
-        </svg>
-      ) : (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <rect width="14" height="14" x="8" y="8" rx="2" />
-          <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
-        </svg>
-      )}
-    </button>
-  )
-}
 
 function BridgeProgress({
   amount,
@@ -655,7 +607,7 @@ function BridgeProgress({
           <span>
             {sourceChainName ?? 'Source'} Txn: <span className="font-mono">{formatShortAddr(sourceTxId)}</span>
           </span>
-          <CopyButton text={sourceTxId} />
+          <CopyButton text={sourceTxId} variant="icon" />
         </div>
       )}
 

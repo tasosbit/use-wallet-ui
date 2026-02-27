@@ -10,7 +10,7 @@ function toBaseUnits(amount: string, decimals: number): number {
   const [whole = '0', frac = ''] = amount.split('.')
   const truncated = frac.slice(0, decimals).padEnd(decimals, '0')
   const result = parseInt(whole + truncated, 10)
-  if (isNaN(result) || result <= 0) throw new Error('Invalid amount')
+  if (isNaN(result) || result < 0) throw new Error('Invalid amount')
   return result
 }
 
@@ -123,7 +123,7 @@ export function useSend(): UseSendReturn {
   }, [])
 
   const handleSend = useCallback(async () => {
-    if (!activeAddress || !algodClient || !receiver || !amount) return
+    if (!activeAddress || !algodClient || !receiver || amount === '') return
 
     setStatus('signing')
     setError(null)

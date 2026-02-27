@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { CachedAsset } from '../cache/assetCache'
+import { CopyButton } from './CopyButton'
 import { Spinner } from './Spinner'
 import { TransactionStatus, type TransactionStatusValue } from './TransactionStatus'
 
@@ -53,20 +54,7 @@ export function ReceivePanel({
   isNameMode,
   evmAddress,
 }: ReceivePanelProps) {
-  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle')
   const [evmExpanded, setEvmExpanded] = useState(false)
-
-  const handleCopy = async () => {
-    if (!activeAddress) return
-    try {
-      await navigator.clipboard.writeText(activeAddress)
-      setCopyState('copied')
-      setTimeout(() => setCopyState('idle'), 1000)
-    } catch {
-      setCopyState('error')
-      setTimeout(() => setCopyState('idle'), 1000)
-    }
-  }
 
   // Check if the resolved asset is already opted in
   const resolvedAssetIndex = isNameMode ? selectedNameAsset?.index : assetInfo?.index
@@ -114,20 +102,7 @@ export function ReceivePanel({
           <p className="text-xs text-[var(--wui-color-text-secondary)] mb-1.5">Your ALGO address:</p>
           <div className="flex items-center gap-2">
             <code className="text-sm font-medium text-[var(--wui-color-text)] flex-1 truncate">{activeAddress}</code>
-            <button
-              onClick={handleCopy}
-              className="shrink-0 px-2.5 py-1 text-xs font-medium rounded-md bg-[var(--wui-color-bg-tertiary)] hover:brightness-90 transition-all"
-              style={{
-                color:
-                  copyState === 'copied'
-                    ? 'var(--wui-color-success-text, #16a34a)'
-                    : copyState === 'error'
-                      ? 'var(--wui-color-danger-text)'
-                      : 'var(--wui-color-text-secondary)',
-              }}
-            >
-              {copyState === 'copied' ? 'COPIED' : copyState === 'error' ? 'ERROR' : 'COPY'}
-            </button>
+            <CopyButton text={activeAddress} />
           </div>
         </div>
       )}

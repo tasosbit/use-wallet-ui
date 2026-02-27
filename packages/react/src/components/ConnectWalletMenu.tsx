@@ -158,7 +158,7 @@ export function ConnectWalletMenu({ children }: ConnectWalletMenuProps) {
                     {/* Close button */}
                     <button
                       onClick={() => context.onOpenChange(false)}
-                      className="absolute right-4 rounded-full bg-[var(--wui-color-bg-tertiary)] p-2 text-[var(--wui-color-text-secondary)] hover:brightness-90 transition-all"
+                      className="absolute right-4 w-9 h-9 flex-none flex items-center justify-center rounded-full bg-[var(--wui-color-bg-tertiary)] text-[var(--wui-color-text-secondary)] hover:brightness-90 transition-all"
                       aria-label="Close dialog"
                     >
                       <svg

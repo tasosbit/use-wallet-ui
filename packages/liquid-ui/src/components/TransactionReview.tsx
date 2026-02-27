@@ -173,17 +173,7 @@ export function TransactionReview({
       </div>
 
       {/* Footer */}
-      {signing ? (
-        <div className="px-6 py-4 border-t border-[var(--wui-color-border)]">
-          <div className="flex items-center gap-2 text-sm text-[var(--wui-color-text-secondary)]">
-            <svg className="animate-spin h-4 w-4 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-            </svg>
-            Signing...
-          </div>
-        </div>
-      ) : dangerous ? (
+      {dangerous && !signing ? (
         <div className="px-6 py-4 border-t border-[var(--wui-color-border)] flex gap-3">
           <button
             onClick={onReject}
@@ -193,7 +183,7 @@ export function TransactionReview({
           </button>
           <button
             onClick={onApprove}
-            className="flex-1 py-2.5 px-4 bg-[var(--wui-color-danger-text)] text-white font-medium rounded-xl hover:brightness-90 transition-all text-sm"
+            className="flex-1 py-2.5 px-4 bg-[var(--wui-color-danger-text)] text-[var(--wui-color-danger-button-text)] font-medium rounded-xl hover:brightness-90 transition-all text-sm"
           >
             Sign (Dangerous)
           </button>

@@ -39,7 +39,7 @@ export function BeforeSignDialog({ transactions, message, dangerous, genesisHash
   const { refs, context } = useFloating({
     open: true,
     onOpenChange: (open) => {
-      if (!open) {
+      if (!open && !signing) {
         setAnimationState('exiting')
         if (dangerous) {
           setTimeout(() => onReject(), 150)
@@ -50,7 +50,7 @@ export function BeforeSignDialog({ transactions, message, dangerous, genesisHash
     },
   })
 
-  const dismiss = useDismiss(context, { outsidePressEvent: 'mousedown' })
+  const dismiss = useDismiss(context, { outsidePressEvent: 'mousedown', enabled: !signing })
   const role = useRole(context, { role: 'alertdialog' })
   const { getFloatingProps } = useInteractions([dismiss, role])
 
@@ -65,12 +65,14 @@ export function BeforeSignDialog({ transactions, message, dangerous, genesisHash
   const closeButton = (
     <button
       onClick={() => {
+        if (signing) return
         setAnimationState('exiting')
         setTimeout(() => {
           dangerous ? onReject() : onApprove()
         }, 150)
       }}
-      className="w-8 h-8 flex-none flex items-center justify-center rounded-full bg-[var(--wui-color-bg-tertiary)] text-[var(--wui-color-text-secondary)] hover:brightness-90 transition-all"
+      disabled={signing}
+      className="w-8 h-8 flex-none flex items-center justify-center rounded-full bg-[var(--wui-color-bg-tertiary)] text-[var(--wui-color-text-secondary)] hover:brightness-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:brightness-100"
       aria-label="Close dialog"
     >
       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -113,8 +115,12 @@ export function BeforeSignDialog({ transactions, message, dangerous, genesisHash
                 network={network}
                 getApplicationAddress={(appId: number) => getApplicationAddress(BigInt(appId))}
                 onApprove={() => {
-                  setAnimationState('exiting')
-                  setTimeout(() => onApprove(), 150)
+                  if (dangerous) {
+                    onApprove()
+                  } else {
+                    setAnimationState('exiting')
+                    setTimeout(() => onApprove(), 150)
+                  }
                 }}
                 onReject={() => {
                   setAnimationState('exiting')

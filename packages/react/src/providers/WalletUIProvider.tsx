@@ -79,6 +79,7 @@ const lightThemeVars = `
   --wui-color-danger-bg: #fee2e2;
   --wui-color-danger-bg-hover: #fecaca;
   --wui-color-danger-text: #b91c1c;
+  --wui-color-danger-button-text: #ffffff;
   --wui-color-avatar-bg: #e5e7eb;
   --wui-color-avatar-icon: #9ca3af;
 `
@@ -101,6 +102,7 @@ const darkThemeVars = `
   --wui-color-danger-bg: rgba(127, 29, 29, 0.4);
   --wui-color-danger-bg-hover: rgba(127, 29, 29, 0.6);
   --wui-color-danger-text: #fca5a5;
+  --wui-color-danger-button-text: #450a0a;
   --wui-color-avatar-bg: #192a39;
   --wui-color-avatar-icon: #6b7280;
 `
@@ -638,7 +640,9 @@ export function WalletUIProvider({
   }, [manager, requestBeforeSign, requestAfterSign, onConnect])
 
   const handleApproveSign = useCallback(() => {
-    setShowSignDialog(false)
+    if (!pendingSign?.dangerous) {
+      setShowSignDialog(false)
+    }
     pendingSign?.resolve()
   }, [pendingSign])
 

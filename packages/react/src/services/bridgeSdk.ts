@@ -28,6 +28,7 @@ export const DEFAULT_RPC_URLS: NodeRpcUrls = {
   SNC: 'https://sonic.drpc.org',
   UNI: 'https://unichain.drpc.org',
   LIN: 'https://linea.drpc.org',
+  ALG: 'https://mainnet-api.algonode.cloud',
 }
 
 let sdkInstance: import('@allbridge/bridge-core-sdk').AllbridgeCoreSdk | null = null

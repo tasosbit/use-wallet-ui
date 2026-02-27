@@ -71,8 +71,12 @@ export interface UseBridgeReturn {
   setSourceChain: (symbol: string) => void
   sourceToken: BridgeToken | null
   setSourceToken: (symbol: string) => void
+  destinationChains: BridgeChain[]
+  destinationChain: BridgeChain | null
+  setDestinationChain: (symbol: string) => void
   destinationToken: BridgeToken | null
   setDestinationToken: (symbol: string) => void
+  sourceIsAlgorand: boolean
 
   // Amount
   amount: string
@@ -150,6 +154,7 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
   // Selection state
   const [selectedSourceChainSymbol, setSelectedSourceChainSymbol] = useState<string | null>(null)
   const [selectedSourceTokenSymbol, setSelectedSourceTokenSymbol] = useState<string | null>(null)
+  const [selectedDestChainSymbol, setSelectedDestChainSymbol] = useState<string | null>(null)
   const [selectedDestTokenSymbol, setSelectedDestTokenSymbol] = useState<string | null>(null)
 
   // Amount state
@@ -204,15 +209,21 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
   // @ts-ignore - isLiquid exists on Liquid wallet metadata
   const isLiquidEvm = !!activeWallet?.metadata?.isLiquid
 
+  // Direction flag: true when bridging FROM Algorand TO an EVM chain
+  const sourceIsAlgorand = selectedSourceChainSymbol === 'ALG'
+
+  // Effective destination chain: defaults to ALG for EVM→ALG, or the selected EVM chain for ALG→EVM
+  const effectiveDestChainSymbol = selectedDestChainSymbol ?? 'ALG'
+
   // Fee display unit — always the source token symbol (e.g. USDC) since fees
   // are inclusive and paid in the source token via stablecoin payment.
   const gasFeeUnit = selectedSourceTokenSymbol ?? null
 
-  // Convert SDK chains to BridgeChain format (EVM chains only, exclude ALG)
-  // Attach token balances and sort chains by total balance descending
+  // Convert SDK chains to BridgeChain format (EVM + ALG as source options)
+  // Attach token balances and sort EVM chains by total balance descending
   const chains: BridgeChain[] = useMemo(() => {
     const mapped = allChains
-      .filter((c) => c.chainType === 'EVM')
+      .filter((c) => c.chainType === 'EVM' || c.chainSymbol === 'ALG')
       .map((c) => {
         const tokens = c.tokens.map((t: TokenWithChainDetails) => {
           const balKey = `${c.chainSymbol}:${t.symbol}`
@@ -234,13 +245,15 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
         }
       })
 
-    // Sort by total normalized balance (normalize all tokens to 18 decimals for comparison)
+    // Sort EVM chains by total normalized balance; keep ALG at the end
     const hasAnyBalance = Object.keys(tokenBalances).length > 0
+    const evmChains = mapped.filter((c) => c.chainSymbol !== 'ALG')
+    const algChains = mapped.filter((c) => c.chainSymbol === 'ALG')
+
     if (hasAnyBalance) {
-      mapped.sort((a, b) => {
+      evmChains.sort((a, b) => {
         const totalA = a.tokens.reduce((sum, t) => {
           const bal = tokenBalances[`${a.chainSymbol}:${t.symbol}`] ?? 0n
-          // Normalize: shift to 18 decimals for cross-token comparison
           const normalized = bal * 10n ** BigInt(18 - t.decimals)
           return sum + normalized
         }, 0n)
@@ -255,18 +268,32 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
       })
     }
 
-    return mapped
+    return [...evmChains, ...algChains]
   }, [allChains, tokenBalances])
+
+  // Available destination chains: when source is ALG, offer EVM chains; otherwise empty (static ALG)
+  const destinationChains: BridgeChain[] = useMemo(() => {
+    if (!sourceIsAlgorand) return []
+    return chains.filter((c) => c.chainSymbol !== 'ALG')
+  }, [chains, sourceIsAlgorand])
 
   // Resolve selected SDK tokens
   const sourceChain = chains.find((c) => c.chainSymbol === selectedSourceChainSymbol) ?? null
   const sourceToken = sourceChain?.tokens.find((t) => t.symbol === selectedSourceTokenSymbol) ?? null
+  const destinationChain = (() => {
+    if (sourceIsAlgorand) {
+      return destinationChains.find((c) => c.chainSymbol === effectiveDestChainSymbol) ?? destinationChains[0] ?? null
+    }
+    // EVM→ALG: dest is always the ALG chain entry
+    return chains.find((c) => c.chainSymbol === 'ALG') ?? null
+  })()
   const destinationToken = (() => {
-    const algChain = allChains.find((c) => c.chainSymbol === 'ALG')
-    if (!algChain) return null
-    const t = algChain.tokens.find((t: TokenWithChainDetails) => t.symbol === selectedDestTokenSymbol) ?? algChain.tokens[0]
+    const destChainSym = effectiveDestChainSymbol
+    const sdkChain = allChains.find((c) => c.chainSymbol === destChainSym)
+    if (!sdkChain) return null
+    const t = sdkChain.tokens.find((t: TokenWithChainDetails) => t.symbol === selectedDestTokenSymbol) ?? sdkChain.tokens[0]
     if (!t) return null
-    return { symbol: t.symbol, name: t.name, decimals: t.decimals, chainSymbol: 'ALG', chainName: algChain.name }
+    return { symbol: t.symbol, name: t.name, decimals: t.decimals, chainSymbol: destChainSym, chainName: sdkChain.name }
   })()
 
   // Resolve full SDK TokenWithChainDetails for API calls
@@ -277,15 +304,15 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
   }, [allChains, selectedSourceChainSymbol, selectedSourceTokenSymbol])
 
   const resolveDestSdkToken = useCallback((): TokenWithChainDetails | null => {
-    const chain = allChains.find((c) => c.chainSymbol === 'ALG')
+    const chain = allChains.find((c) => c.chainSymbol === effectiveDestChainSymbol)
     if (!chain) return null
     return chain.tokens.find((t: TokenWithChainDetails) => t.symbol === (selectedDestTokenSymbol ?? '')) ?? chain.tokens[0] ?? null
-  }, [allChains, selectedDestTokenSymbol])
+  }, [allChains, effectiveDestChainSymbol, selectedDestTokenSymbol])
 
   // -- Initialize SDK and load chains --
 
   useEffect(() => {
-    if (!isLiquidEvm) return
+    if (!isLiquidEvm && !activeAddress) return
 
     let cancelled = false
     setChainsLoading(true)
@@ -312,17 +339,34 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
         if (cancelled) return
         setAllChains(chainList)
 
-        // Auto-select first EVM chain and its first token
-        const firstEvm = chainList.find((c) => c.chainType === 'EVM')
-        if (firstEvm && firstEvm.tokens.length > 0) {
-          setSelectedSourceChainSymbol(firstEvm.chainSymbol)
-          setSelectedSourceTokenSymbol(firstEvm.tokens[0].symbol)
-        }
-
-        // Auto-select first ALG token as destination
-        const algChain = chainList.find((c) => c.chainSymbol === 'ALG')
-        if (algChain && algChain.tokens.length > 0) {
-          setSelectedDestTokenSymbol(algChain.tokens[0].symbol)
+        // Auto-select source: if EVM address available, pick first EVM chain;
+        // otherwise if only Algorand address, pick ALG as source
+        if (evmAddress) {
+          const firstEvm = chainList.find((c) => c.chainType === 'EVM')
+          if (firstEvm && firstEvm.tokens.length > 0) {
+            setSelectedSourceChainSymbol(firstEvm.chainSymbol)
+            setSelectedSourceTokenSymbol(firstEvm.tokens[0].symbol)
+          }
+          // Auto-select first ALG token as destination
+          const algChain = chainList.find((c) => c.chainSymbol === 'ALG')
+          if (algChain && algChain.tokens.length > 0) {
+            setSelectedDestTokenSymbol(algChain.tokens[0].symbol)
+          }
+        } else if (activeAddress) {
+          // No EVM address — default to ALG→EVM direction
+          setSelectedSourceChainSymbol('ALG')
+          const algChain = chainList.find((c) => c.chainSymbol === 'ALG')
+          if (algChain && algChain.tokens.length > 0) {
+            setSelectedSourceTokenSymbol(algChain.tokens[0].symbol)
+          }
+          // Auto-select first EVM chain as destination
+          const firstEvm = chainList.find((c) => c.chainType === 'EVM')
+          if (firstEvm) {
+            setSelectedDestChainSymbol(firstEvm.chainSymbol)
+            if (firstEvm.tokens.length > 0) {
+              setSelectedDestTokenSymbol(firstEvm.tokens[0].symbol)
+            }
+          }
         }
       } catch (err) {
         console.warn('[useBridge] Chain fetch failed:', err)
@@ -334,7 +378,7 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
     return () => {
       cancelled = true
     }
-  }, [isLiquidEvm]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isLiquidEvm, activeAddress]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // -- Fetch EVM token balances when evmAddress and chains are available --
 
@@ -382,6 +426,42 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
     }
   }, [evmAddress, allChains, options.nodeRpcUrls])
 
+  // -- Fetch Algorand ASA balances when source is ALG --
+
+  useEffect(() => {
+    if (!sourceIsAlgorand || !algorandAddress || !algodClient || allChains.length === 0) return
+
+    const algChain = allChains.find((c) => c.chainSymbol === 'ALG')
+    if (!algChain || algChain.tokens.length === 0) return
+
+    let cancelled = false
+    setBalancesLoading(true)
+    ;(async () => {
+      try {
+        const info = await algodClient.accountInformation(algorandAddress).do()
+        const balances: TokenBalanceMap = {}
+        for (const token of algChain.tokens) {
+          const assetId = Number(token.tokenAddress)
+          const holding = info.assets?.find(
+            (a: { assetId: number | bigint }) => Number(a.assetId) === assetId,
+          )
+          balances[`ALG:${token.symbol}`] = holding ? BigInt(holding.amount) : 0n
+        }
+        if (!cancelled) {
+          setTokenBalances((prev) => ({ ...prev, ...balances }))
+        }
+      } catch (err) {
+        console.warn('[useBridge] ALG balance fetch failed:', err)
+      } finally {
+        if (!cancelled) setBalancesLoading(false)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [sourceIsAlgorand, algorandAddress, algodClient, allChains])
+
   // -- Fetch gas fees when tokens change --
   // Also checks whether the Algorand account has low balance and pre-computes
   // extra gas (paid in stablecoin, converted to ALGO on the destination chain).
@@ -413,9 +493,10 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
         // Check whether the Algorand account has low available balance.
         // If below the threshold, include extra gas (paid in stablecoin)
         // so the user receives ALGO for future transactions.
+        // Only relevant when destination is Algorand (EVM→ALG direction).
         let extraGasFloat: string | null = null
         let extraGasAlgoValue: string | null = null
-        if (algorandAddress && algodClient) {
+        if (!sourceIsAlgorand && algorandAddress && algodClient) {
           let needsExtraGas = false
           try {
             const info = await algodClient.accountInformation(algorandAddress).do()
@@ -445,7 +526,6 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
                   extraGasAlgoValue = `~${algoAmount.toFixed(3)} ALGO`
                 }
               }
-              console.debug('[useBridge] Extra gas check:', { needsExtraGas, maxFloat, extraGasFloat })
             } catch (err) {
               console.warn('[useBridge] Could not fetch extra gas limits:', err)
             }
@@ -482,7 +562,7 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
     return () => {
       cancelled = true
     }
-  }, [resolveSourceSdkToken, resolveDestSdkToken, algorandAddress, algodClient])
+  }, [resolveSourceSdkToken, resolveDestSdkToken, algorandAddress, algodClient, sourceIsAlgorand])
 
   // -- Compute estimated transfer time when tokens change --
 
@@ -670,9 +750,45 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
       } else {
         setSelectedSourceTokenSymbol(null)
       }
+
+      // Update destination chain based on direction
+      if (symbol === 'ALG') {
+        // ALG→EVM: set dest to first EVM chain
+        const firstEvm = chains.find((c) => c.chainSymbol !== 'ALG')
+        if (firstEvm) {
+          setSelectedDestChainSymbol(firstEvm.chainSymbol)
+          const destSdkChain = allChains.find((c) => c.chainSymbol === firstEvm.chainSymbol)
+          if (destSdkChain && destSdkChain.tokens.length > 0) {
+            setSelectedDestTokenSymbol(destSdkChain.tokens[0].symbol)
+          }
+        }
+      } else {
+        // EVM→ALG: dest is always ALG
+        setSelectedDestChainSymbol(null)
+        const algChain = allChains.find((c) => c.chainSymbol === 'ALG')
+        if (algChain && algChain.tokens.length > 0) {
+          setSelectedDestTokenSymbol(algChain.tokens[0].symbol)
+        }
+      }
+
       setReceivedAmount(null)
     },
-    [chains],
+    [chains, allChains],
+  )
+
+  const setDestinationChain = useCallback(
+    (symbol: string) => {
+      setSelectedDestChainSymbol(symbol)
+      // Auto-select first token of the new destination chain
+      const sdkChain = allChains.find((c) => c.chainSymbol === symbol)
+      if (sdkChain && sdkChain.tokens.length > 0) {
+        setSelectedDestTokenSymbol(sdkChain.tokens[0].symbol)
+      } else {
+        setSelectedDestTokenSymbol(null)
+      }
+      setReceivedAmount(null)
+    },
+    [allChains],
   )
 
   const setSourceTokenBySymbol = useCallback((symbol: string) => {
@@ -770,9 +886,113 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
     throw new Error('Timed out waiting for account funding. Please try again.')
   }
 
-  // -- Main bridge handler --
+  // -- Algorand → EVM bridge handler --
 
-  const handleBridge = useCallback(async () => {
+  const handleAlgorandBridge = useCallback(async () => {
+    const sdk = sdkRef.current
+    const srcSdkToken = resolveSourceSdkToken()
+    const dstSdkToken = resolveDestSdkToken()
+
+    if (!sdk || !srcSdkToken || !dstSdkToken || !algorandAddress || !evmAddress || !amount || !algodClient) {
+      return
+    }
+
+    setStatus('signing')
+    setError(null)
+    setSourceTxId(null)
+    setTransferStatus(null)
+    setOptInNeeded(false)
+    setOptInSigned(false)
+    setOptInConfirmed(false)
+    setWatchingForFunding(false)
+
+    try {
+      const { Messenger, FeePaymentMethod } = await import('@allbridge/bridge-core-sdk')
+
+      // Build send params — Algorand has no token approval, no extra gas for ALG→EVM
+      const stableFee = stablecoinFeeRef.current
+      const useStablecoin = !!stableFee
+      const sendParams = {
+        amount,
+        fromAccountAddress: algorandAddress,
+        toAccountAddress: evmAddress,
+        sourceToken: srcSdkToken,
+        destinationToken: dstSdkToken,
+        messenger: Messenger.ALLBRIDGE,
+        ...(useStablecoin
+          ? {
+              gasFeePaymentMethod: FeePaymentMethod.WITH_STABLECOIN,
+              fee: stableFee.int,
+            }
+          : {
+              gasFeePaymentMethod: FeePaymentMethod.WITH_NATIVE_CURRENCY,
+            }),
+      }
+
+      // SDK returns hex-encoded unsigned transactions for Algorand
+      const rawTxs = (await sdk.bridge.rawTxBuilder.send(sendParams)) as string[]
+
+      // Decode hex strings to Uint8Array[]
+      const txBytes = rawTxs.map((hex) => {
+        const bytes = new Uint8Array(hex.length / 2)
+        for (let i = 0; i < hex.length; i += 2) {
+          bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16)
+        }
+        return bytes
+      })
+
+      // Find the application call transaction — Allbridge status API
+      // tracks by the app call txid, not the asset transfer txid.
+      let appCallTxId: string | null = null
+      for (const raw of txBytes) {
+        try {
+          const decoded = algosdk.decodeUnsignedTransaction(raw)
+          if (decoded.type === algosdk.TransactionType.appl) {
+            appCallTxId = decoded.txID()
+            break
+          }
+        } catch {
+          // skip decode errors
+        }
+      }
+
+      // Sign via Algorand wallet
+      const signedTxns = await signTransactions(txBytes)
+
+      // Submit signed transactions
+      setStatus('sending')
+      const signedBytes = signedTxns.filter((s): s is Uint8Array => s != null)
+      if (signedBytes.length === 0) throw new Error('No signed transactions returned')
+
+      const { txid } = await algodClient.sendRawTransaction(signedBytes).do()
+      // Wait for confirmation using whichever txid we have
+      const confirmTxId = appCallTxId ?? txid
+      await algosdk.waitForConfirmation(algodClient, confirmTxId, 4)
+
+      // Use the app call txid for status tracking (Allbridge expects it)
+      setSourceTxId(confirmTxId)
+      setStatus('waiting')
+      setWaitingSince(Date.now())
+
+      // Transfer status polling takes over via the useEffect above
+    } catch (err) {
+      console.error('[useBridge] Algorand bridge failed:', err)
+      setStatus('error')
+      setError(err instanceof Error ? err.message : 'Bridge failed')
+    }
+  }, [
+    resolveSourceSdkToken,
+    resolveDestSdkToken,
+    algorandAddress,
+    evmAddress,
+    amount,
+    algodClient,
+    signTransactions,
+  ]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // -- EVM → Algorand bridge handler --
+
+  const handleEvmBridge = useCallback(async () => {
     const sdk = sdkRef.current
     const srcSdkToken = resolveSourceSdkToken()
     const dstSdkToken = resolveDestSdkToken()
@@ -989,8 +1209,18 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
     queryClient,
   ]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // -- Main bridge handler: dispatches by direction --
+
+  const handleBridge = useCallback(async () => {
+    if (sourceIsAlgorand) {
+      await handleAlgorandBridge()
+    } else {
+      await handleEvmBridge()
+    }
+  }, [sourceIsAlgorand, handleAlgorandBridge, handleEvmBridge])
+
   return {
-    isAvailable: isLiquidEvm && sdkAvailable !== false,
+    isAvailable: (isLiquidEvm || !!activeAddress) && sdkAvailable !== false,
     chains,
     chainsLoading,
     balancesLoading,
@@ -998,8 +1228,12 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
     setSourceChain,
     sourceToken,
     setSourceToken: setSourceTokenBySymbol,
+    destinationChains,
+    destinationChain,
+    setDestinationChain,
     destinationToken,
     setDestinationToken: setDestinationTokenBySymbol,
+    sourceIsAlgorand,
     amount,
     setAmount,
     receivedAmount,

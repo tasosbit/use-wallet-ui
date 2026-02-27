@@ -12,6 +12,7 @@ import { useState } from 'react'
 import { WelcomeContent } from '@d13co/liquid-ui'
 
 import { useWalletUI } from '../providers/WalletUIProvider'
+import { useBridgeDialog } from '../providers/BridgeDialogProvider'
 
 interface WelcomeDialogProps {
   algorandAddress: string
@@ -21,6 +22,7 @@ interface WelcomeDialogProps {
 
 export function WelcomeDialog({ algorandAddress, evmAddress, onDismiss }: WelcomeDialogProps) {
   const { theme } = useWalletUI()
+  const { bridge, openBridge } = useBridgeDialog()
   const [animationState, setAnimationState] = useState<'starting' | 'entered' | 'exiting' | null>('starting')
 
   const handleClose = () => {
@@ -37,7 +39,7 @@ export function WelcomeDialog({ algorandAddress, evmAddress, onDismiss }: Welcom
     },
   })
 
-  const dismiss = useDismiss(context, { outsidePressEvent: 'mousedown' })
+  const dismiss = useDismiss(context, { outsidePress: false })
   const role = useRole(context, { role: 'dialog' })
   const { getFloatingProps } = useInteractions([dismiss, role])
 
@@ -75,6 +77,8 @@ export function WelcomeDialog({ algorandAddress, evmAddress, onDismiss }: Welcom
                 onClose={handleClose}
                 labelId={labelId}
                 descriptionId={descriptionId}
+                bridgeAvailable={bridge.isAvailable}
+                onBridgeClick={openBridge}
               />
             </div>
           </FloatingFocusManager>

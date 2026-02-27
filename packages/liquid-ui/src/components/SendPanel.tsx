@@ -317,7 +317,7 @@ export function SendPanel({
               (sendType === 'asa' && !assetInfo) ||
               (sendType === 'asa' && receiverOptInStatus !== 'opted-in' && receiverOptInStatus !== 'idle')
             }
-            className="w-full py-2.5 px-4 bg-[var(--wui-color-primary)] text-white font-medium rounded-xl hover:brightness-90 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-2.5 px-4 bg-[var(--wui-color-primary)] text-[var(--wui-color-primary-text)] font-medium rounded-xl hover:brightness-90 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {sendType === 'asa' && receiverOptInStatus === 'checking' ? 'Verifying...' : `Send ${sendLabel}`}
           </button>

@@ -6,6 +6,8 @@ export interface WelcomeContentProps {
   onClose: () => void
   labelId?: string
   descriptionId?: string
+  bridgeAvailable?: boolean
+  onBridgeClick?: () => void
 }
 
 function shortAddress(address: string) {
@@ -18,6 +20,8 @@ export function WelcomeContent({
   onClose,
   labelId,
   descriptionId,
+  bridgeAvailable,
+  onBridgeClick,
 }: WelcomeContentProps) {
   const [copiedField, setCopiedField] = useState<'evm' | 'algorand' | null>(null)
 
@@ -135,30 +139,58 @@ export function WelcomeContent({
           </div>
         </div>
 
-        <p className="text-sm text-[var(--wui-color-text)]">
-          To get started,{' '}
-          <a className="text-[var(--wui-color-link)] hover:text-[var(--wui-color-link-hover)]" rel="noopener noreferrer" target="_blank" href="https://algorand.co/ecosystem/directory?tags=CEX">
-            fund
-          </a>{' '}
-          your new Algorand account via CEX, Card onramp, or{' '}
-          <a className="text-[var(--wui-color-link)] hover:text-[var(--wui-color-link-hover)]" rel="noopener noreferrer" target="_blank" href="https://core.allbridge.io/?ft=USDC&tt=USDC&f=BAS&t=ALG">
-            bridge USDC
-          </a>{' '}
-          in 2 minutes.
-        </p>
+        {bridgeAvailable ? (
+          <p className="text-sm text-[var(--wui-color-text)]">
+            To get started, you can bridge USDC without leaving this site, or you can fund your new Algorand account via{' '}
+            <a
+              className="text-[var(--wui-color-link)] hover:text-[var(--wui-color-link-hover)]"
+              rel="noopener noreferrer"
+              target="_blank"
+              href="https://algorand.co/ecosystem/directory?tags=CEX"
+            >
+              CEX, Card onramps
+            </a>{' '}
+            and many other methods.
+          </p>
+        ) : (
+          <p className="text-sm text-[var(--wui-color-text)]">
+            To get started, fund your new Algorand account via{' '}
+            <a
+              className="text-[var(--wui-color-link)] hover:text-[var(--wui-color-link-hover)]"
+              rel="noopener noreferrer"
+              target="_blank"
+              href="https://algorand.co/ecosystem/directory?tags=CEX"
+            >
+              CEX, Card onramps
+            </a>{' '}
+            and many other methods.
+          </p>
+        )}
       </div>
 
       {/* Action buttons */}
       <div className="px-6 py-4 border-t border-[var(--wui-color-border)] flex flex gap-2">
-        <button
-          onClick={() => {
-            onClose()
-            window.open('https://algorand.co/algorand-start-here#hs_cos_wrapper_widget_1769533007886')
-          }}
-          className="w-full py-2.5 px-4 bg-[var(--wui-color-primary)] text-[var(--wui-color-primary-text)] font-medium rounded-xl hover:brightness-90 transition-all text-sm"
-        >
-          Get Started
-        </button>
+        {bridgeAvailable ? (
+          <button
+            onClick={() => {
+              onClose()
+              onBridgeClick?.()
+            }}
+            className="w-full py-2.5 px-4 bg-[var(--wui-color-primary)] text-[var(--wui-color-primary-text)] font-medium rounded-xl hover:brightness-90 transition-all text-sm"
+          >
+            Bridge USDC
+          </button>
+        ) : (
+          <button
+            onClick={() => {
+              onClose()
+              window.open('https://algorand.co/algorand-start-here#hs_cos_wrapper_widget_1769533007886')
+            }}
+            className="w-full py-2.5 px-4 bg-[var(--wui-color-primary)] text-[var(--wui-color-primary-text)] font-medium rounded-xl hover:brightness-90 transition-all text-sm"
+          >
+            Get Started
+          </button>
+        )}
         <button
           onClick={onClose}
           className="w-full py-2.5 px-4 bg-[var(--wui-color-bg-tertiary)] text-[var(--wui-color-text)] font-medium rounded-xl hover:brightness-90 transition-all text-sm"

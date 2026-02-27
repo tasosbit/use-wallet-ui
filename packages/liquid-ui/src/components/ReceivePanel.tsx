@@ -339,7 +339,7 @@ function AssetCard({
       ) : (
         <button
           onClick={onOptIn}
-          className="w-full py-2 px-4 bg-[var(--wui-color-primary)] text-white font-medium rounded-xl hover:brightness-90 transition-all text-sm"
+          className="w-full py-2 px-4 bg-[var(--wui-color-primary)] text-[var(--wui-color-primary-text)] font-medium rounded-xl hover:brightness-90 transition-all text-sm"
         >
           Opt In
         </button>

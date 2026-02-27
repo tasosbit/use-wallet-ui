@@ -205,7 +205,7 @@ function ExpandedBridgeDialog() {
                 )}
               </div>
               <div className="p-4 pt-2">
-                <BridgePanel {...bridgeProps} hideHeader autoFocusSourceChain />
+                <BridgePanel {...bridgeProps} hideHeader autoFocusAmount />
               </div>
             </div>
           </FloatingFocusManager>

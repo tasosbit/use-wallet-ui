@@ -40,6 +40,10 @@ export interface BridgePanelProps {
   onSourceChainChange: (symbol: string) => void
   sourceTokenSymbol: string | null
   onSourceTokenChange: (symbol: string) => void
+  destinationChains?: BridgeChainDisplay[]
+  destinationChainSymbol?: string | null
+  onDestinationChainChange?: (symbol: string) => void
+  sourceIsAlgorand?: boolean
   destinationTokenSymbol: string | null
   destinationTokens: BridgeTokenDisplay[]
   onDestinationTokenChange: (symbol: string) => void
@@ -87,7 +91,7 @@ export interface BridgePanelProps {
   hideHeader?: boolean
 
   /** Auto-focus the source chain dropdown when mounted */
-  autoFocusSourceChain?: boolean
+  autoFocusAmount?: boolean
 }
 
 export interface BridgeTransferStatus {
@@ -143,6 +147,10 @@ export function BridgePanel({
   onSourceChainChange,
   sourceTokenSymbol,
   onSourceTokenChange,
+  destinationChains = [],
+  destinationChainSymbol,
+  onDestinationChainChange,
+  sourceIsAlgorand = false,
   destinationTokenSymbol,
   destinationTokens,
   onDestinationTokenChange,
@@ -172,7 +180,7 @@ export function BridgePanel({
   // balancesLoading is available via props for consumers who want loading indicators
   onBack,
   hideHeader,
-  autoFocusSourceChain,
+  autoFocusAmount,
 }: BridgePanelProps) {
   const sourceChain = chains.find((c) => c.chainSymbol === sourceChainSymbol) ?? null
   const sourceTokens = sourceChain?.tokens ?? []
@@ -204,8 +212,7 @@ export function BridgePanel({
     amount &&
     parsedAmount > 0 &&
     !insufficientFunds &&
-    evmAddress &&
-    algorandAddress
+    (sourceIsAlgorand ? algorandAddress : evmAddress && algorandAddress)
 
   return (
     <>
@@ -249,13 +256,8 @@ export function BridgePanel({
       {/* No chains available */}
       {!chainsLoading && status === 'idle' && chains.length === 0 && (
         <div className="text-center py-6">
-          <p className="text-sm text-[var(--wui-color-text-secondary)] mb-2">
-            Bridge routes are currently unavailable.
-          </p>
-          <button
-            onClick={onRetry}
-            className="text-sm text-[var(--wui-color-primary)] hover:underline"
-          >
+          <p className="text-sm text-[var(--wui-color-text-secondary)] mb-2">Bridge routes are currently unavailable.</p>
+          <button onClick={onRetry} className="text-sm text-[var(--wui-color-primary)] hover:underline">
             Try again
           </button>
         </div>
@@ -265,15 +267,26 @@ export function BridgePanel({
       {!chainsLoading && (status === 'idle' || status === 'error') && chains.length > 0 && (
         <>
           <p className="text-xs text-[var(--wui-color-text-tertiary)] mb-3">
-            Bridge tokens from EVM chains to your Algorand account
+            {sourceIsAlgorand
+              ? 'Bridge tokens from Algorand to your EVM accounts using Allbridge'
+              : 'Bridge tokens from your EVM accounts using Allbridge'}
           </p>
 
           {/* Source: Chain + Token selectors */}
           <div className="mb-3">
-            <label className="block text-xs font-medium text-[var(--wui-color-text-secondary)] mb-1">From</label>
+            <label className="block text-xs font-medium text-[var(--wui-color-text-secondary)] mb-1">
+              From
+              {sourceIsAlgorand
+                ? algorandAddress
+                  ? ` ${formatShortAddr(algorandAddress)}`
+                  : ''
+                : evmAddress
+                  ? ` ${formatShortAddr(evmAddress)}`
+                  : ''}{' '}
+              on
+            </label>
             <div className="flex gap-2">
               <select
-                autoFocus={autoFocusSourceChain}
                 value={sourceChainSymbol ?? ''}
                 onChange={(e) => onSourceChainChange(e.target.value)}
                 className="flex-1 rounded-lg border border-[var(--wui-color-border)] bg-[var(--wui-color-bg-secondary)] py-2.5 px-2 text-sm text-[var(--wui-color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--wui-color-primary)] focus:border-transparent"
@@ -302,6 +315,7 @@ export function BridgePanel({
           <div className="mb-3">
             <label className="block text-xs font-medium text-[var(--wui-color-text-secondary)] mb-1">Amount</label>
             <input
+              autoFocus={autoFocusAmount}
               type="text"
               inputMode="decimal"
               placeholder="0.00"
@@ -311,20 +325,43 @@ export function BridgePanel({
             />
             {insufficientFunds && (
               <p className="mt-1 text-xs text-red-500">
-                Insufficient balance{sourceBalanceFloat != null ? ` (${sourceBalanceFloat.toFixed(2)} ${sourceTokenSymbol ?? ''} available)` : ''}
+                Insufficient balance
+                {sourceBalanceFloat != null ? ` (${sourceBalanceFloat.toFixed(2)} ${sourceTokenSymbol ?? ''} available)` : ''}
               </p>
             )}
           </div>
 
-          {/* Destination: Algorand + Token */}
+          {/* Destination: chain + token */}
           <div className="mb-3">
             <label className="block text-xs font-medium text-[var(--wui-color-text-secondary)] mb-1">
-              To (Algorand)
+              To
+              {!sourceIsAlgorand
+                ? algorandAddress
+                  ? ` ${formatShortAddr(algorandAddress)}`
+                  : ''
+                : evmAddress
+                  ? ` ${formatShortAddr(evmAddress)}`
+                  : ''}{' '}
+              on
             </label>
             <div className="flex gap-2 items-center">
-              <div className="flex-1 rounded-lg border border-[var(--wui-color-border)] bg-[var(--wui-color-bg-secondary)] py-2.5 px-3 text-sm text-[var(--wui-color-text-secondary)]">
-                Algorand
-              </div>
+              {destinationChains.length > 0 && onDestinationChainChange ? (
+                <select
+                  value={destinationChainSymbol ?? ''}
+                  onChange={(e) => onDestinationChainChange(e.target.value)}
+                  className="flex-1 rounded-lg border border-[var(--wui-color-border)] bg-[var(--wui-color-bg-secondary)] py-2.5 px-2 text-sm text-[var(--wui-color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--wui-color-primary)] focus:border-transparent"
+                >
+                  {destinationChains.map((c) => (
+                    <option key={c.chainSymbol} value={c.chainSymbol}>
+                      {c.chainName}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div className="flex-1 rounded-lg border border-[var(--wui-color-border)] bg-[var(--wui-color-bg-secondary)] py-2.5 px-3 text-sm text-[var(--wui-color-text-secondary)]">
+                  Algorand
+                </div>
+              )}
               <select
                 value={destinationTokenSymbol ?? ''}
                 onChange={(e) => onDestinationTokenChange(e.target.value)}
@@ -354,11 +391,9 @@ export function BridgePanel({
               </span>
             </div>
             {extraGasAlgo && (
-              <div className="flex justify-between items-center text-xs">
+              <div className="flex justify-between items-center text-xs mb-1">
                 <span className="text-[var(--wui-color-text-secondary)]">You receive (extra gas)</span>
-                <span className="text-[var(--wui-color-text-secondary)]">
-                  {extraGasAlgo}
-                </span>
+                <span className="text-[var(--wui-color-text-secondary)]">{extraGasAlgo}</span>
               </div>
             )}
             {gasFee && (
@@ -372,25 +407,7 @@ export function BridgePanel({
             {estimatedTimeMs != null && estimatedTimeMs > 0 && (
               <div className="flex justify-between items-center text-xs">
                 <span className="text-[var(--wui-color-text-secondary)]">Estimated time</span>
-                <span className="text-[var(--wui-color-text-secondary)]">
-                  ~{formatTimeRemaining(estimatedTimeMs)}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Addresses */}
-          <div className="mb-4 text-xs text-[var(--wui-color-text-tertiary)] space-y-1">
-            {evmAddress && (
-              <div className="flex justify-between">
-                <span>From</span>
-                <span className="font-mono">{formatShortAddr(evmAddress)}</span>
-              </div>
-            )}
-            {algorandAddress && (
-              <div className="flex justify-between">
-                <span>To</span>
-                <span className="font-mono">{formatShortAddr(algorandAddress)}</span>
+                <span className="text-[var(--wui-color-text-secondary)]">~{formatTimeRemaining(estimatedTimeMs)}</span>
               </div>
             )}
           </div>
@@ -406,7 +423,7 @@ export function BridgePanel({
           <button
             onClick={status === 'error' ? onRetry : onBridge}
             disabled={status !== 'idle' && status !== 'error' ? true : !canSubmit}
-            className="w-full py-2.5 px-4 bg-[var(--wui-color-primary)] text-white font-medium rounded-xl hover:brightness-90 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-2.5 px-4 bg-[var(--wui-color-primary)] text-[var(--wui-color-primary-text)] font-medium rounded-xl hover:brightness-90 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {status === 'error' ? 'Try again' : 'Bridge'}
           </button>
@@ -421,7 +438,7 @@ export function BridgePanel({
         </div>
       )}
 
-      {status === 'opting-in' && (
+      {status === 'opting-in' && !sourceIsAlgorand && (
         <div className="flex items-center justify-center py-6 text-sm text-[var(--wui-color-text-secondary)]">
           <Spinner className="h-4 w-4 mr-2" />
           Sign USDC opt-in for Algorand
@@ -441,6 +458,7 @@ export function BridgePanel({
           amount={amount}
           sourceTokenSymbol={sourceTokenSymbol}
           sourceChainName={sourceChain?.chainName ?? null}
+          destinationChainName={destinationChains.find((c) => c.chainSymbol === destinationChainSymbol)?.chainName ?? null}
           transferStatus={transferStatus}
           estimatedTimeMs={estimatedTimeMs}
           waitingSince={waitingSince}
@@ -455,12 +473,7 @@ export function BridgePanel({
       {/* Success */}
       {status === 'success' && (
         <div className="text-center py-4">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-8 w-8 mx-auto mb-2 text-green-500"
-            viewBox="0 0 20 20"
-            fill="currentColor"
-          >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mx-auto mb-2 text-green-500" viewBox="0 0 20 20" fill="currentColor">
             <path
               fillRule="evenodd"
               d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
@@ -470,7 +483,10 @@ export function BridgePanel({
           <p className="text-sm font-medium text-[var(--wui-color-text)]">Bridge complete!</p>
           {receivedAmount && destinationTokenSymbol && (
             <p className="mt-1.5 text-sm text-[var(--wui-color-text-secondary)]">
-              Received <span className="font-medium text-[var(--wui-color-text)]">{receivedAmount} {destinationTokenSymbol}</span>
+              Received{' '}
+              <span className="font-medium text-[var(--wui-color-text)]">
+                {receivedAmount} {destinationTokenSymbol}
+              </span>
             </p>
           )}
           {sourceTxId && (
@@ -503,6 +519,7 @@ interface BridgeProgressProps {
   amount: string
   sourceTokenSymbol: string | null
   sourceChainName: string | null
+  destinationChainName: string | null
   transferStatus: BridgeTransferStatus | null
   estimatedTimeMs: number | null
   waitingSince: number | null
@@ -515,12 +532,7 @@ interface BridgeProgressProps {
 
 function CheckIcon() {
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      className="h-3.5 w-3.5 text-green-500 shrink-0"
-      viewBox="0 0 20 20"
-      fill="currentColor"
-    >
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-green-500 shrink-0" viewBox="0 0 20 20" fill="currentColor">
       <path
         fillRule="evenodd"
         d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
@@ -565,9 +577,34 @@ function CopyButton({ text }: { text: string }) {
       title="Copy"
     >
       {copied ? (
-        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M20 6 9 17l-5-5" />
+        </svg>
       ) : (
-        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <rect width="14" height="14" x="8" y="8" rx="2" />
+          <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+        </svg>
       )}
     </button>
   )
@@ -577,6 +614,7 @@ function BridgeProgress({
   amount,
   sourceTokenSymbol,
   sourceChainName,
+  destinationChainName,
   transferStatus,
   estimatedTimeMs,
   waitingSince,
@@ -586,10 +624,8 @@ function BridgeProgress({
   optInConfirmed,
   sourceTxId,
 }: BridgeProgressProps) {
-  const sendDone =
-    transferStatus != null && transferStatus.sendConfirmations >= transferStatus.sendConfirmationsNeeded
-  const sigsDone =
-    transferStatus != null && transferStatus.signaturesCount >= transferStatus.signaturesNeeded
+  const sendDone = transferStatus != null && transferStatus.sendConfirmations >= transferStatus.sendConfirmationsNeeded
+  const sigsDone = transferStatus != null && transferStatus.signaturesCount >= transferStatus.signaturesNeeded
   const receiveDone =
     transferStatus?.receiveConfirmations != null &&
     transferStatus.receiveConfirmationsNeeded != null &&
@@ -599,20 +635,29 @@ function BridgeProgress({
     <div className="py-4 flex flex-col">
       {/* Header */}
       <p className="text-sm text-[var(--wui-color-text)] text-center mb-2">
-        Bridging {amount} {sourceTokenSymbol ?? 'USDC'} from {sourceChainName ?? 'EVM'} to Algorand using{' '}
-        <a href="https://allbridge.io/" target="_blank" rel="noopener noreferrer" className="text-[var(--wui-color-primary)] hover:underline">Allbridge</a>
+        Bridging {amount} {sourceTokenSymbol ?? 'USDC'} from {sourceChainName ?? 'EVM'} to {destinationChainName ?? 'Algorand'} using{' '}
+        <a
+          href="https://allbridge.io/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[var(--wui-color-primary)] hover:underline"
+        >
+          Allbridge
+        </a>
+      </p>
+
+      <p className="text-sm text-[var(--wui-color-text-secondary)] text-center mb-4">
+        You can safely minimize this dialog and browse, just stay within the site to ensure your transaction completes as expected.
       </p>
 
       {sourceTxId && (
         <div className="flex items-center justify-center text-xs text-[var(--wui-color-text-tertiary)] mb-2">
-          <span>{sourceChainName ?? 'Source'} Txn: <span className="font-mono">{formatShortAddr(sourceTxId)}</span></span>
+          <span>
+            {sourceChainName ?? 'Source'} Txn: <span className="font-mono">{formatShortAddr(sourceTxId)}</span>
+          </span>
           <CopyButton text={sourceTxId} />
         </div>
       )}
-
-      <p className="text-[10px] text-[var(--wui-color-text-tertiary)] text-center mb-4">
-        You can safely minimize this dialog and browse, just stay within the site to ensure your transaction completes as expected.
-      </p>
 
       <div className="inline-flex flex-col gap-3 self-center">
         {/* Source confirmations */}
@@ -682,13 +727,11 @@ function BridgeProgress({
           )}
           <span className="text-[var(--wui-color-text-secondary)]">
             Destination delivery
-            {transferStatus?.receiveConfirmations != null &&
-              transferStatus.receiveConfirmationsNeeded != null &&
-              !receiveDone && (
-                <span className="ml-1 text-[var(--wui-color-text-tertiary)]">
-                  {transferStatus.receiveConfirmations}/{transferStatus.receiveConfirmationsNeeded}
-                </span>
-              )}
+            {transferStatus?.receiveConfirmations != null && transferStatus.receiveConfirmationsNeeded != null && !receiveDone && (
+              <span className="ml-1 text-[var(--wui-color-text-tertiary)]">
+                {transferStatus.receiveConfirmations}/{transferStatus.receiveConfirmationsNeeded}
+              </span>
+            )}
           </span>
         </div>
       </div>

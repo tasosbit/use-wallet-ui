@@ -21,7 +21,13 @@ import {
   type TokenBalanceMap,
 } from '../services/bridgeSdk'
 import { type EIP1193Provider } from '../services/evmProviderAdapter'
-import { switchToEvmChain, switchBackToAlgorand } from '../services/evmChainSwitch'
+import { switchToEvmChain } from '../services/evmChainSwitch'
+import {
+  detectEip2612,
+  buildPermitSignature,
+  encodePermitCalldata,
+  extractSpenderFromApproveTx,
+} from '../services/evmPermit'
 
 // -- Public types for the bridge panel --
 
@@ -46,6 +52,7 @@ export type BridgeStatus =
   | 'idle'
   | 'loading-chains'
   | 'quoting'
+  | 'permit-signing'
   | 'approving'
   | 'signing'
   | 'sending'
@@ -58,6 +65,8 @@ export type BridgeStatus =
 
 export interface UseBridgeOptions {
   nodeRpcUrls?: NodeRpcUrls
+  /** When false, defers all network operations (chain init, balances, fees). Default: true. */
+  enabled?: boolean
 }
 
 export interface UseBridgeReturn {
@@ -137,10 +146,22 @@ function floatToSmallestUnit(amount: string, decimals: number): string {
   return BigInt(whole + paddedFrac).toString()
 }
 
+// Extract a human-readable message from any thrown value.
+// Handles standard Errors, MetaMask EthereumProviderErrors (cross-realm, not
+// instanceof Error), and plain objects with a message property.
+function getErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message
+  if (err !== null && typeof err === 'object' && 'message' in err) {
+    return String((err as Record<string, unknown>).message)
+  }
+  return 'Bridge failed'
+}
+
 // Map Allbridge chain symbols to their native currency ticker for fee display
 export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
   const { activeAddress, activeWallet, algodClient, signTransactions } = useWallet()
   const queryClient = useQueryClient()
+  const enabled = options.enabled ?? true
 
   // SDK state
   const sdkRef = useRef<AllbridgeCoreSdk | null>(null)
@@ -275,6 +296,14 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
     return [...evmChains, ...algChains]
   }, [allChains, tokenBalances])
 
+  // Confirmations required on the source chain (from SDK token metadata)
+  const sourceConfirmationsNeeded: number | null = useMemo(() => {
+    if (!selectedSourceChainSymbol || !selectedSourceTokenSymbol) return null
+    const chain = allChains.find((c) => c.chainSymbol === selectedSourceChainSymbol)
+    const token = chain?.tokens.find((t: TokenWithChainDetails) => t.symbol === selectedSourceTokenSymbol)
+    return (token as unknown as { confirmations?: number })?.confirmations ?? null
+  }, [allChains, selectedSourceChainSymbol, selectedSourceTokenSymbol])
+
   // Available destination chains: when source is ALG, offer EVM chains; otherwise empty (static ALG)
   const destinationChains: BridgeChain[] = useMemo(() => {
     if (!sourceIsAlgorand) return []
@@ -316,7 +345,9 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
   // -- Initialize SDK and load chains --
 
   useEffect(() => {
+    if (!enabled) return
     if (!isLiquidEvm && !activeAddress) return
+    if (sdkRef.current && allChains.length > 0) return // already initialized
 
     let cancelled = false
     setChainsLoading(true)
@@ -382,11 +413,12 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
     return () => {
       cancelled = true
     }
-  }, [isLiquidEvm, activeAddress]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [enabled, isLiquidEvm, activeAddress]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // -- Fetch EVM token balances when evmAddress and chains are available --
 
   useEffect(() => {
+    if (!enabled) return
     if (!evmAddress || allChains.length === 0) return
 
     let cancelled = false
@@ -428,11 +460,12 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
     return () => {
       cancelled = true
     }
-  }, [evmAddress, allChains, options.nodeRpcUrls])
+  }, [enabled, evmAddress, allChains, options.nodeRpcUrls])
 
   // -- Fetch Algorand ASA balances when source is ALG --
 
   useEffect(() => {
+    if (!enabled) return
     if (!sourceIsAlgorand || !algorandAddress || !algodClient || allChains.length === 0) return
 
     const algChain = allChains.find((c) => c.chainSymbol === 'ALG')
@@ -464,13 +497,14 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
     return () => {
       cancelled = true
     }
-  }, [sourceIsAlgorand, algorandAddress, algodClient, allChains])
+  }, [enabled, sourceIsAlgorand, algorandAddress, algodClient, allChains])
 
   // -- Fetch gas fees when tokens change --
   // Also checks whether the Algorand account has low balance and pre-computes
   // extra gas (paid in stablecoin, converted to ALGO on the destination chain).
 
   useEffect(() => {
+    if (!enabled) return
     const sdk = sdkRef.current
     const src = resolveSourceSdkToken()
     const dst = resolveDestSdkToken()
@@ -502,13 +536,16 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
         let extraGasAlgoValue: string | null = null
         if (!sourceIsAlgorand && algorandAddress && algodClient) {
           let needsExtraGas = false
+          let isZeroBalance = false
           try {
             const info = await algodClient.accountInformation(algorandAddress).do()
             const available = Number(info.amount) - Number(info.minBalance)
+            isZeroBalance = Number(info.amount) === 0
             needsExtraGas = available < LOW_BALANCE_THRESHOLD_MICRO
           } catch {
-            // Network error or account doesn't exist — assume extra gas needed
+            // Network error or account doesn't exist — assume bootstrapping from zero
             needsExtraGas = true
+            isZeroBalance = true
           }
 
           if (needsExtraGas) {
@@ -523,10 +560,12 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
                 const raw = Math.min(MAX_EXTRA_GAS_USD, maxFloat)
                 extraGasFloat = raw.toFixed(8)
 
-                // Estimate ALGO received: proportion of max dest gas based on our request
+                // Estimate ALGO received: proportion of max dest gas based on our request.
+                // For zero-balance accounts, add 0.2 ALGO that Allbridge sends to bootstrap
+                // the account before the main transfer (covers the initial opt-in funding).
                 const gasAmountMaxFloat = parseFloat(limits.destinationChain.gasAmountMax.float ?? '0')
                 if (gasAmountMaxFloat > 0) {
-                  const algoAmount = (raw / maxFloat) * gasAmountMaxFloat
+                  const algoAmount = (raw / maxFloat) * gasAmountMaxFloat + (isZeroBalance ? 0.2 : 0)
                   extraGasAlgoValue = `~${algoAmount.toFixed(3)} ALGO`
                 }
               }
@@ -566,11 +605,12 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
     return () => {
       cancelled = true
     }
-  }, [resolveSourceSdkToken, resolveDestSdkToken, algorandAddress, algodClient, sourceIsAlgorand])
+  }, [enabled, resolveSourceSdkToken, resolveDestSdkToken, algorandAddress, algodClient, sourceIsAlgorand])
 
   // -- Compute estimated transfer time when tokens change --
 
   useEffect(() => {
+    if (!enabled) return
     const sdk = sdkRef.current
     const src = resolveSourceSdkToken()
     const dst = resolveDestSdkToken()
@@ -593,7 +633,7 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
     return () => {
       cancelled = true
     }
-  }, [resolveSourceSdkToken, resolveDestSdkToken])
+  }, [enabled, resolveSourceSdkToken, resolveDestSdkToken])
 
   // -- Debounced quote calculation --
   // Fees are inclusive: the user's input is the total they spend. In stablecoin mode
@@ -646,6 +686,17 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
     }
   }, [amount, gasFee, extraGasAmount, resolveSourceSdkToken, resolveDestSdkToken])
 
+  // -- Refresh source chain balances after a successful EVM bridge --
+
+  useEffect(() => {
+    if (status !== 'success' || sourceIsAlgorand || !evmAddress || !selectedSourceChainSymbol) return
+    const sourceChainData = allChains.filter((c) => c.chainSymbol === selectedSourceChainSymbol)
+    if (sourceChainData.length === 0) return
+    fetchEvmTokenBalances(evmAddress, sourceChainData, options.nodeRpcUrls)
+      .then((balances) => setTokenBalances((prev) => ({ ...prev, ...balances })))
+      .catch(() => {})
+  }, [status]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // -- Transfer status polling --
 
   useEffect(() => {
@@ -661,6 +712,7 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
         try {
           const st = await getTransferStatus(sdk, selectedSourceChainSymbol, sourceTxId)
           if (controller.signal.aborted) return
+          console.log('[Allbridge] transferStatus', JSON.stringify(st, null, 2))
           setTransferStatus(st)
 
           const isComplete =
@@ -706,21 +758,19 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
 
     const pollAlgorand = async () => {
       if (!sourceConfirmedRound || !algodClient) return
+      // Use statusAfterBlock for block-by-block confirmation tracking — this
+      // is the native algod pattern and avoids arbitrary polling intervals.
+      let currentRound = BigInt(sourceConfirmedRound)
       while (!controller.signal.aborted) {
         try {
-          const nodeStatus = await algodClient.status().do()
-          const lastRound = Number(nodeStatus.lastRound)
-          setLocalSendConfirmations(lastRound - sourceConfirmedRound + 1)
+          const blockStatus = await algodClient.statusAfterBlock(currentRound).do()
+          if (controller.signal.aborted) return
+          currentRound = BigInt(Number(blockStatus.lastRound))
+          setLocalSendConfirmations(Number(currentRound) - sourceConfirmedRound + 1)
         } catch {
-          // ignore
+          if (controller.signal.aborted) return
+          await new Promise<void>((resolve) => setTimeout(resolve, 1000))
         }
-        await new Promise<void>((resolve) => {
-          const t = setTimeout(resolve, 5000)
-          controller.signal.addEventListener('abort', () => {
-            clearTimeout(t)
-            resolve()
-          })
-        })
       }
     }
 
@@ -736,8 +786,14 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getTransactionReceipt', params: [sourceTxId] }),
             })
-            const json = (await res.json()) as { result?: { blockNumber?: string } | null }
+            const json = (await res.json()) as { result?: { blockNumber?: string; status?: string } | null }
             if (json.result?.blockNumber) {
+              if (json.result.status === '0x0') {
+                setStatus('error')
+                setError('EVM transaction reverted')
+                controller.abort()
+                return
+              }
               txBlock = parseInt(json.result.blockNumber, 16)
             }
           }
@@ -779,16 +835,6 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
   useEffect(() => {
     return () => {
       abortRef.current?.abort()
-      if (activeWallet && isLiquidEvm) {
-        const getProvider = (activeWallet as unknown as Record<string, unknown>).getEvmProvider as
-          | (() => Promise<EIP1193Provider>)
-          | undefined
-        if (getProvider) {
-          getProvider()
-            .then((p) => switchBackToAlgorand(p))
-            .catch(() => {})
-        }
-      }
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1016,8 +1062,11 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
             }),
       }
 
+      console.log('[Allbridge] ALG sendParams', JSON.stringify(sendParams, null, 2))
+
       // SDK returns hex-encoded unsigned transactions for Algorand
       const rawTxs = (await sdk.bridge.rawTxBuilder.send(sendParams)) as string[]
+      console.log('[Allbridge] ALG rawTxs (hex)', rawTxs)
 
       // Decode hex strings to Uint8Array[]
       const txBytes = rawTxs.map((hex) => {
@@ -1027,6 +1076,29 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
         }
         return bytes
       })
+
+      // Decode and log each transaction for investigation
+      for (let i = 0; i < txBytes.length; i++) {
+        try {
+          const decoded = algosdk.decodeUnsignedTransaction(txBytes[i]!)
+          console.log(`[Allbridge] ALG decoded tx[${i}]`, {
+            type: decoded.type,
+            txID: decoded.txID(),
+            from: algosdk.encodeAddress(decoded.from.publicKey),
+            to: decoded.to ? algosdk.encodeAddress(decoded.to.publicKey) : undefined,
+            assetIndex: decoded.assetIndex,
+            amount: decoded.amount?.toString(),
+            appIndex: decoded.appIndex,
+            appArgs: decoded.appArgs?.map((a) => Buffer.from(a).toString('hex')),
+            accounts: decoded.accounts?.map((a) => algosdk.encodeAddress(a.publicKey)),
+            foreignApps: decoded.foreignApps?.map((a) => a.toString()),
+            foreignAssets: decoded.foreignAssets?.map((a) => a.toString()),
+            note: decoded.note ? Buffer.from(decoded.note).toString('hex') : undefined,
+          })
+        } catch {
+          console.log(`[Allbridge] ALG tx[${i}] decode failed, raw hex:`, rawTxs[i])
+        }
+      }
 
       // Find the application call transaction — Allbridge status API
       // tracks by the app call txid, not the asset transfer txid.
@@ -1067,7 +1139,7 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
     } catch (err) {
       console.error('[useBridge] Algorand bridge failed:', err)
       setStatus('error')
-      setError(err instanceof Error ? err.message : 'Bridge failed')
+      setError(getErrorMessage(err))
     }
   }, [
     resolveSourceSdkToken,
@@ -1170,20 +1242,74 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
           owner: evmAddress,
           amount: approveAmountInt,
         })
-        const approveHash = (await evmProvider.request({
-          method: 'eth_sendTransaction',
-          params: [approveTx],
-        })) as string
 
-        // Wait for approval tx to be mined before building the send tx
-        let approveReceipt: unknown = null
-        while (!approveReceipt) {
-          approveReceipt = await evmProvider.request({
-            method: 'eth_getTransactionReceipt',
-            params: [approveHash],
+        const spenderAddress = extractSpenderFromApproveTx(approveTx as { data: string })
+        const chainIdBig = sourceChainData?.chainId ? BigInt(sourceChainData.chainId) : undefined
+
+        const permitCheck = chainIdBig
+          ? await detectEip2612(srcSdkToken.tokenAddress, evmAddress, evmProvider)
+          : { supported: false as const }
+
+        if (permitCheck.supported && permitCheck.nonce !== undefined) {
+          // EIP-2612 path: gasless sign → permit tx → bridge tx (no polling wait)
+          setStatus('permit-signing')
+          const deadline = BigInt(Math.floor(Date.now() / 1000) + 600) // 10 min
+
+          const permitSig = await buildPermitSignature({
+            provider: evmProvider,
+            tokenAddress: srcSdkToken.tokenAddress,
+            ownerAddress: evmAddress,
+            spenderAddress,
+            value: BigInt(approveAmountInt),
+            nonce: permitCheck.nonce,
+            deadline,
+            chainId: chainIdBig!,
           })
-          if (!approveReceipt) {
-            await new Promise((r) => setTimeout(r, 2000))
+
+          const permitCalldata = encodePermitCalldata({
+            owner: evmAddress,
+            spender: spenderAddress,
+            value: BigInt(approveAmountInt),
+            deadline,
+            ...permitSig,
+          })
+
+          setStatus('approving')
+          const permitHash = (await evmProvider.request({
+            method: 'eth_sendTransaction',
+            params: [{ from: evmAddress, to: srcSdkToken.tokenAddress, data: permitCalldata }],
+          })) as string
+
+          // Wait for the permit tx to mine so the allowance is on-chain before
+          // we build and estimate the bridge tx (estimation runs against current state).
+          let permitReceipt: unknown = null
+          while (!permitReceipt) {
+            permitReceipt = await evmProvider.request({
+              method: 'eth_getTransactionReceipt',
+              params: [permitHash],
+            })
+            if (!permitReceipt) {
+              await new Promise((r) => setTimeout(r, 2000))
+            }
+          }
+        } else {
+          // Sequential fallback: standard approve → poll → bridge
+          setStatus('approving')
+          const approveHash = (await evmProvider.request({
+            method: 'eth_sendTransaction',
+            params: [approveTx],
+          })) as string
+
+          // Wait for approval tx to be mined before building the send tx
+          let approveReceipt: unknown = null
+          while (!approveReceipt) {
+            approveReceipt = await evmProvider.request({
+              method: 'eth_getTransactionReceipt',
+              params: [approveHash],
+            })
+            if (!approveReceipt) {
+              await new Promise((r) => setTimeout(r, 2000))
+            }
           }
         }
       }
@@ -1208,12 +1334,15 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
             }),
       }
 
+      console.log('[Allbridge] EVM sendParams', JSON.stringify(sendParams, null, 2))
+
       const rawTx = (await sdk.bridge.rawTxBuilder.send(sendParams)) as {
         from?: string
         to?: string
         value?: string
         data?: string
       }
+      console.log('[Allbridge] EVM rawTx', JSON.stringify(rawTx, null, 2))
 
       // The Allbridge SDK returns `value` as a decimal string (designed for web3.js),
       // but EIP-1193 `eth_sendTransaction` expects hex-encoded quantities.
@@ -1245,11 +1374,8 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
 
       setSourceTxId(txHash)
 
-      // 8. Switch back to Algorand chain
-      await switchBackToAlgorand(evmProvider)
-
-      // 9. If opt-in needed and we were already on the source EVM chain,
-      //    sign opt-in now that we've switched back to Algorand
+      // 8. If opt-in needed and we were already on the source EVM chain,
+      //    sign opt-in now (the chain switch was deferred to avoid an extra switch).
       if (optInCheck.needed && onSourceEvmChain) {
         setStatus('opting-in')
         await buildAndSignOptIn(dstSdkToken)
@@ -1277,15 +1403,7 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
     } catch (err) {
       console.error('[useBridge] Bridge failed:', err)
       setStatus('error')
-      setError(err instanceof Error ? err.message : 'Bridge failed')
-
-      // Try to switch back to Algorand chain on error
-      try {
-        const evmProvider = await getEvmProvider()
-        await switchBackToAlgorand(evmProvider)
-      } catch {
-        // ignore
-      }
+      setError(getErrorMessage(err))
     }
   }, [
     resolveSourceSdkToken,
@@ -1340,14 +1458,19 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
     transferStatus: transferStatus
       ? {
           ...transferStatus,
-          send: transferStatus.send
-            ? {
-                ...transferStatus.send,
-                confirmations: Math.max(transferStatus.send.confirmations, localSendConfirmations),
-              }
-            : transferStatus.send,
+          send: {
+            confirmations: Math.max(transferStatus.send?.confirmations ?? 0, localSendConfirmations),
+            confirmationsNeeded: transferStatus.send?.confirmationsNeeded ?? sourceConfirmationsNeeded ?? 0,
+          },
         }
-      : null,
+      : localSendConfirmations > 0 && sourceConfirmationsNeeded != null
+        ? ({
+            send: { confirmations: localSendConfirmations, confirmationsNeeded: sourceConfirmationsNeeded },
+            signaturesCount: 0,
+            signaturesNeeded: 0,
+            receive: null,
+          } as TransferStatusResponse)
+        : null,
     optInNeeded,
     optInSigned,
     watchingForFunding,

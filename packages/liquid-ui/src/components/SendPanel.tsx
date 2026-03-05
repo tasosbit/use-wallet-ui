@@ -334,8 +334,8 @@ export function SendPanel({
       />
 
       {status === 'success' && (
-        <button onClick={reset} className="mt-1 w-full text-sm text-[var(--wui-color-primary)] hover:underline">
-          Send more
+        <button onClick={onBack} className="mt-3 w-full py-2.5 px-4 bg-[var(--wui-color-primary)] text-[var(--wui-color-primary-text)] font-medium rounded-xl hover:brightness-90 transition-all text-sm">
+          Back
         </button>
       )}
     </>

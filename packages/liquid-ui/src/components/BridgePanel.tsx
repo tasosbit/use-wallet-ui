@@ -22,6 +22,7 @@ export type BridgeStatusValue =
   | 'idle'
   | 'loading-chains'
   | 'quoting'
+  | 'permit-signing'
   | 'approving'
   | 'signing'
   | 'sending'
@@ -197,6 +198,7 @@ export function BridgePanel({
   const insufficientFunds = sourceBalanceFloat != null && parsedAmount > 0 && parsedAmount > sourceBalanceFloat
 
   const isProcessing =
+    status === 'permit-signing' ||
     status === 'approving' ||
     status === 'signing' ||
     status === 'sending' ||
@@ -206,7 +208,7 @@ export function BridgePanel({
     status === 'opt-in-sent'
 
   const canSubmit =
-    (status === 'idle' || status === 'error') &&
+    status === 'idle' &&
     sourceChainSymbol &&
     sourceTokenSymbol &&
     destinationTokenSymbol &&
@@ -264,8 +266,8 @@ export function BridgePanel({
         </div>
       )}
 
-      {/* Form (visible in idle and error states) */}
-      {!chainsLoading && (status === 'idle' || status === 'error') && chains.length > 0 && (
+      {/* Form (visible in idle state only) */}
+      {!chainsLoading && status === 'idle' && chains.length > 0 && (
         <>
           <p className="text-xs text-[var(--wui-color-text-tertiary)] mb-3">
             {sourceIsAlgorand
@@ -413,29 +415,26 @@ export function BridgePanel({
             )}
           </div>
 
-          {/* Inline error */}
-          {status === 'error' && error && (
-            <div className="mb-3 rounded-lg bg-red-500/10 border border-red-500/20 p-2.5">
-              <p className="text-xs text-red-500 break-words">{error}</p>
-            </div>
-          )}
-
           {/* Bridge button */}
           <button
-            onClick={status === 'error' ? onRetry : onBridge}
-            disabled={status !== 'idle' && status !== 'error' ? true : !canSubmit}
+            onClick={onBridge}
+            disabled={!canSubmit}
             className="w-full py-2.5 px-4 bg-[var(--wui-color-primary)] text-[var(--wui-color-primary-text)] font-medium rounded-xl hover:brightness-90 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {status === 'error' ? 'Try again' : 'Bridge'}
+            Bridge
           </button>
         </>
       )}
 
       {/* Processing states */}
-      {(status === 'approving' || status === 'signing') && (
+      {(status === 'permit-signing' || status === 'approving' || status === 'signing') && (
         <div className="flex items-center justify-center py-6 text-sm text-[var(--wui-color-text-secondary)]">
           <Spinner className="h-4 w-4 mr-2" />
-          {status === 'approving' ? 'Approving token' : 'Confirm in wallet'}
+          {status === 'permit-signing'
+            ? 'Signing permit…'
+            : status === 'approving'
+              ? 'Approving token'
+              : 'Confirm in wallet'}
         </div>
       )}
 
@@ -496,20 +495,31 @@ export function BridgePanel({
             </p>
           )}
           <button onClick={onReset} className="mt-3 text-sm text-[var(--wui-color-primary)] hover:underline">
-            Bridge more
+            Close
           </button>
         </div>
       )}
 
-      {/* Error (standalone fallback — only if form is not visible, e.g. no chains) */}
-      {status === 'error' && (chainsLoading || chains.length === 0) && (
-        <div className="text-center py-3">
-          <p className="text-sm text-red-500 mb-2 break-words">{error}</p>
-          <button onClick={onRetry} className="text-sm text-[var(--wui-color-primary)] hover:underline">
+      {/* Error panel */}
+      {status === 'error' && (
+        <div className="text-center py-4">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mx-auto mb-2 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+          </svg>
+          <p className="text-sm font-medium text-[var(--wui-color-text)] mb-1">Bridge failed</p>
+          {error && <p className="text-xs text-red-500 break-words mb-1.5">{error}</p>}
+          {sourceTxId && (
+            <p className="text-xs text-[var(--wui-color-text-tertiary)] flex items-center justify-center gap-1">
+              TX: <span className="font-mono">{formatShortAddr(sourceTxId)}</span>
+              <CopyButton text={sourceTxId} variant="icon" title="Copy transaction ID" />
+            </p>
+          )}
+          <button onClick={onRetry} className="mt-3 text-sm text-[var(--wui-color-primary)] hover:underline">
             Try again
           </button>
         </div>
       )}
+
     </>
   )
 }

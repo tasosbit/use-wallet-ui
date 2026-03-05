@@ -25,9 +25,9 @@ const PROCESSING_STATUSES = new Set([
 ])
 
 export function BridgeDialogProvider({ children }: { children: ReactNode }) {
-  const bridge = useBridge()
   const [isOpen, setIsOpen] = useState(false)
   const [isMinimized, setIsMinimized] = useState(false)
+  const bridge = useBridge({ enabled: isOpen })
   const prevStatusRef = useRef(bridge.status)
 
   const isProcessing = PROCESSING_STATUSES.has(bridge.status)
@@ -60,14 +60,14 @@ export function BridgeDialogProvider({ children }: { children: ReactNode }) {
     }
   }, [bridge.isAvailable, isOpen])
 
-  // Auto-open as minimized widget when bridge completes
+  // Auto-maximize when bridge completes
   useEffect(() => {
     const prev = prevStatusRef.current
     prevStatusRef.current = bridge.status
 
     if (bridge.status === 'success' && prev !== 'success') {
       setIsOpen(true)
-      setIsMinimized(true)
+      setIsMinimized(false)
     }
   }, [bridge.status])
 

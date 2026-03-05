@@ -27,15 +27,42 @@ export async function switchToEvmChain(
 
 /**
  * Switch back to the Algorand EVM chain (4160 / 0x1040) after bridge.
+ * Polls eth_chainId until the switch is confirmed so that callers can safely
+ * proceed with Algorand signing operations immediately after awaiting this.
  */
 export async function switchBackToAlgorand(provider: EIP1193Provider): Promise<void> {
+  const current = (await provider.request({ method: 'eth_chainId' })) as string
+  if (current.toLowerCase() === ALGORAND_CHAIN_ID_HEX.toLowerCase()) return
+
   try {
     await provider.request({
       method: 'wallet_switchEthereumChain',
       params: [{ chainId: ALGORAND_CHAIN_ID_HEX }],
     })
   } catch {
-    // Non-blocking — ensureAlgorandChain() in LiquidEvmBaseWallet will handle this
-    // on the next Algorand signing operation
+    // Swallow — ensureAlgorandChain() in LiquidEvmBaseWallet is the fallback
+  }
+
+  // Poll until the wallet reflects the new chain (MetaMask resolves the RPC
+  // call before the internal chain state is visible to subsequent requests).
+  for (let i = 0; i < 20; i++) {
+    const chainId = (await provider.request({ method: 'eth_chainId' })) as string
+    if (chainId.toLowerCase() === ALGORAND_CHAIN_ID_HEX.toLowerCase()) return
+    await new Promise((r) => setTimeout(r, 150))
+  }
+}
+
+/**
+ * Verify the provider is on the Algorand chain before an Algorand signing
+ * operation. Throws if the chain ID is wrong after an attempted switch.
+ */
+export async function assertAlgorandChain(provider: EIP1193Provider): Promise<void> {
+  const chainId = (await provider.request({ method: 'eth_chainId' })) as string
+  if (chainId.toLowerCase() === ALGORAND_CHAIN_ID_HEX.toLowerCase()) return
+  // One more switch attempt in case the previous one raced
+  await switchBackToAlgorand(provider)
+  const chainIdAfter = (await provider.request({ method: 'eth_chainId' })) as string
+  if (chainIdAfter.toLowerCase() !== ALGORAND_CHAIN_ID_HEX.toLowerCase()) {
+    throw new Error(`Expected Algorand chain (${ALGORAND_CHAIN_ID_HEX}) but wallet is on ${chainIdAfter}`)
   }
 }

@@ -87,7 +87,7 @@ export function ReceivePanel({
         {registryLoading && (
           <div className="ml-auto flex items-center gap-1 text-xs text-[var(--wui-color-text-secondary)]">
             <Spinner className="h-3 w-3" />
-            <span>Loading registry...</span>
+            <span>Loading registry</span>
           </div>
         )}
       </div>
@@ -170,7 +170,7 @@ export function ReceivePanel({
           {!isNameMode && assetLookupLoading && (
             <div className="flex items-center justify-center py-4 text-sm text-[var(--wui-color-text-secondary)]">
               <Spinner className="h-4 w-4 mr-2" />
-              Looking up asset...
+              Looking up asset
             </div>
           )}
 
@@ -194,7 +194,7 @@ export function ReceivePanel({
           {isNameMode && nameSearchLoading && (
             <div className="flex items-center justify-center py-4 text-sm text-[var(--wui-color-text-secondary)]">
               <Spinner className="h-4 w-4 mr-2" />
-              Searching...
+              Searching
             </div>
           )}
 

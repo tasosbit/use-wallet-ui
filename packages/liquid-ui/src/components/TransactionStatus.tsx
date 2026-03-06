@@ -23,7 +23,7 @@ export function TransactionStatus({ status, error, successMessage, onRetry, txId
     return (
       <div className="flex items-center justify-center py-4 text-sm text-[var(--wui-color-text-secondary)]">
         <Spinner className="h-4 w-4 mr-2" />
-        Waiting for signature...
+        Waiting for signature
       </div>
     )
   }
@@ -32,7 +32,7 @@ export function TransactionStatus({ status, error, successMessage, onRetry, txId
     return (
       <div className="flex items-center justify-center py-4 text-sm text-[var(--wui-color-text-secondary)]">
         <Spinner className="h-4 w-4 mr-2" />
-        Sending transaction...
+        Sending transaction
       </div>
     )
   }

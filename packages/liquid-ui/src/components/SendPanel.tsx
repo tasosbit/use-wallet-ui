@@ -260,7 +260,7 @@ export function SendPanel({
               {assetLookupLoading && (
                 <div className="flex items-center mb-3 text-xs text-[var(--wui-color-text-secondary)]">
                   <Spinner className="h-3 w-3 mr-1.5" />
-                  Looking up asset...
+                  Looking up asset
                 </div>
               )}
               {assetLookupError && <p className="mb-3 text-xs text-[var(--wui-color-danger-text)] break-words">{assetLookupError}</p>}
@@ -319,7 +319,7 @@ export function SendPanel({
             }
             className="w-full py-2.5 px-4 bg-[var(--wui-color-primary)] text-[var(--wui-color-primary-text)] font-medium rounded-xl hover:brightness-90 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {sendType === 'asa' && receiverOptInStatus === 'checking' ? 'Verifying...' : `Send ${sendLabel}`}
+            {sendType === 'asa' && receiverOptInStatus === 'checking' ? 'Verifying' : `Send ${sendLabel}`}
           </button>
         </>
       )}

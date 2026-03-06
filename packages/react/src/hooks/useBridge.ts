@@ -1465,6 +1465,7 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
 
       console.log('[useBridge] setSourceTxId:', txHash, 'optInCheck:', JSON.stringify(optInCheck))
       setSourceTxId(txHash)
+      setWaitingSince(Date.now())
 
       // 8. If opt-in needed and we were already on the source EVM chain,
       //    sign opt-in now (the chain switch was deferred to avoid an extra switch).
@@ -1475,7 +1476,6 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
 
       // 10. Handle opt-in submission
       setStatus('waiting')
-      setWaitingSince(Date.now())
 
       if (optInCheck.needed) {
         if (optInCheck.canAfford) {

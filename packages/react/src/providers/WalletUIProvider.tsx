@@ -597,13 +597,13 @@ export function WalletUIProvider({
           opts.getEvmAccounts = effectiveRainbowkit.getEvmAccounts
         }
       }
-    } else if (manager.wallets.some((w) => w.id === 'rainbowkit')) {
+    } else if (manager.wallets.some((w) => w.id === 'rainbowkit') && !wagmiConfig && !rainbowkit) {
       console.warn(
         '[WalletUI] WalletManager includes a RainbowKit wallet but no `rainbowkit` or `wagmiConfig` prop was passed to WalletUIProvider.\n' +
           'Pass `wagmiConfig` to WalletUIProvider, or import { createRainbowKitConfig } from "@txnlab/use-wallet-ui-react/rainbowkit" and pass the result as the `rainbowkit` prop.',
       )
     }
-  }, [manager, effectiveRainbowkit])
+  }, [manager, effectiveRainbowkit, wagmiConfig, rainbowkit])
 
   // Keep wallet name and network config in refs so requestBeforeSign doesn't depend on them
   const walletNameRef = useRef<string | undefined>(undefined)

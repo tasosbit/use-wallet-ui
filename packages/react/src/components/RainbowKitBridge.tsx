@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useConnectModal } from '@rainbow-me/rainbowkit'
-import { useAccount, useAccountEffect } from 'wagmi'
+import { useAccount, useAccountEffect, useDisconnect } from 'wagmi'
 import { watchAccount, disconnect as wagmiDisconnect, getAccount } from '@wagmi/core'
 
 const RAINBOWKIT_ID = 'rainbowkit'
@@ -207,6 +207,23 @@ export function RainbowKitBridge({ walletManager, state }: RainbowKitBridgeProps
     }
   }, [connectModalOpen, state])
 
+  // Suppress spurious wagmi reconnects after a user-initiated disconnect
+  const { disconnect: disconnectWagmi } = useDisconnect()
+  const suppressReconnectRef = useRef(false)
+  const suppressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const suppressReconnect = () => {
+    suppressReconnectRef.current = true
+    if (suppressTimerRef.current) clearTimeout(suppressTimerRef.current)
+    suppressTimerRef.current = setTimeout(() => {
+      suppressReconnectRef.current = false
+    }, 1_500)
+  }
+
+  useEffect(() => () => {
+    if (suppressTimerRef.current) clearTimeout(suppressTimerRef.current)
+  }, [])
+
   // Sync wagmi account changes with use-wallet
   const account = useAccount()
   const connectingRef = useRef(false)
@@ -217,6 +234,11 @@ export function RainbowKitBridge({ walletManager, state }: RainbowKitBridgeProps
       // Ignore events during getEvmAccounts flow — the SDK handles the connect
       if (state.connectInProgress || connectingRef.current) {
         console.log('[RainbowKitBridge] onConnect: skipping (connectInProgress or connecting)')
+        return
+      }
+      if (suppressReconnectRef.current) {
+        console.log('[RainbowKitBridge] onConnect: suppressing stale reconnect after disconnect')
+        disconnectWagmi()
         return
       }
       const rkWallet = walletManager.wallets.find((w) => w.id === RAINBOWKIT_ID)
@@ -244,6 +266,7 @@ export function RainbowKitBridge({ walletManager, state }: RainbowKitBridgeProps
         console.log('[RainbowKitBridge] onDisconnect: skipping (connectInProgress or connecting)')
         return
       }
+      suppressReconnect()
       const rkWallet = walletManager.wallets.find((w) => w.id === RAINBOWKIT_ID)
       // Skip if RainbowKitWallet.disconnect() itself triggered this wagmi event —
       // it already handles its own cleanup. Only act on external disconnects
@@ -279,6 +302,11 @@ export function RainbowKitBridge({ walletManager, state }: RainbowKitBridgeProps
   useEffect(() => {
     console.log('[RainbowKitBridge] mount/account effect', { isConnected: account.isConnected, address: account.address, connector: account.connector?.name, connectInProgress: state.connectInProgress, connectingRef: connectingRef.current, rkWalletConnected: walletManager.wallets.find((w) => w.id === RAINBOWKIT_ID)?.isConnected })
     if (account.isConnected && account.address) {
+      if (suppressReconnectRef.current) {
+        console.log('[RainbowKitBridge] mount effect: suppressing stale reconnect after disconnect')
+        disconnectWagmi()
+        return
+      }
       const rkWallet = walletManager.wallets.find((w) => w.id === RAINBOWKIT_ID)
       // Skip if getEvmAccounts flow is in progress — it handles its own connect
       if (rkWallet && !connectingRef.current && !state.connectInProgress) {

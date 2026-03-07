@@ -24,5 +24,7 @@ export type { RainbowKitUIConfig } from './providers/WalletUIProvider'
 export { useBridgeDialog } from './providers/BridgeDialogProvider'
 export type { BridgeDialogContextType } from './providers/BridgeDialogProvider'
 
+export { getDefaultConfig } from './rainbowkit'
+
 // Initialize custom fonts
 initializeFonts()

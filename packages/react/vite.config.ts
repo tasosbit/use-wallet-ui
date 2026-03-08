@@ -24,10 +24,22 @@ export default defineConfig({
         // External so consumers share a single copy (avoids duplicate React
         // contexts when wagmi/RainbowKit also depend on react-query)
         '@tanstack/react-query',
-        // RainbowKit bridge externals (optional peer deps)
-        'wagmi',
-        '@wagmi/core',
-        '@rainbow-me/rainbowkit',
+        // Algorand peer deps — consumers already install these directly;
+        // bundling them causes duplicate instances and inflates bundle size.
+        'algosdk',
+        '@algorandfoundation/algokit-utils',
+        // liquid-accounts-evm is a peer dep that also transitively pulls in
+        // viem; externalising it avoids bundling viem into this package.
+        'liquid-accounts-evm',
+        // RainbowKit bridge externals (optional peer deps).
+        // Use regex so subpath imports like @rainbow-me/rainbowkit/wallets and
+        // wagmi/chains are also treated as external and not bundled into this
+        // package. Bundling them causes duplicate @wagmi/connectors instances
+        // in the consumer's Rollup build, which breaks the WalletConnect
+        // connector (EthereumProvider undefined error in production builds).
+        /^wagmi/,
+        /^@wagmi\//,
+        /^@rainbow-me\/rainbowkit/,
       ],
       output: [
         {

@@ -699,13 +699,19 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
 
   // -- Transfer status polling --
 
+  // Poll interval: 1/12th of estimated bridge time (e.g. 120s bridge → 10s poll), clamped to [3s, 30s]
+  const pollIntervalMs = useMemo(() => {
+    if (!estimatedTimeMs) return 10_000
+    return Math.max(3_000, Math.min(30_000, Math.round(estimatedTimeMs / 12)))
+  }, [estimatedTimeMs])
+
   useEffect(() => {
     console.log('[useBridge] transfer status poll effect: status=%s sourceTxId=%s chain=%s', status, sourceTxId, selectedSourceChainSymbol)
     if (status !== 'waiting' || !sourceTxId || !selectedSourceChainSymbol) return
     const sdk = sdkRef.current
     if (!sdk) return
 
-    console.log('[useBridge] starting transfer status poll for txId=%s chain=%s', sourceTxId, selectedSourceChainSymbol)
+    console.log('[useBridge] starting transfer status poll for txId=%s chain=%s (interval=%dms)', sourceTxId, selectedSourceChainSymbol, pollIntervalMs)
     const controller = new AbortController()
     abortRef.current = controller
 
@@ -734,9 +740,8 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
           console.warn('[useBridge] transferStatus poll error:', pollErr)
         }
 
-        // Wait 5 seconds between polls
         await new Promise<void>((resolve) => {
-          const t = setTimeout(resolve, 5000)
+          const t = setTimeout(resolve, pollIntervalMs)
           controller.signal.addEventListener('abort', () => {
             clearTimeout(t)
             resolve()
@@ -747,7 +752,7 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
 
     poll()
     return () => controller.abort()
-  }, [status, sourceTxId, selectedSourceChainSymbol])
+  }, [status, sourceTxId, selectedSourceChainSymbol, pollIntervalMs])
 
   // -- EVM source chain confirmation polling --
   // Tracks EVM block confirmations in parallel with Allbridge API polling.
@@ -796,7 +801,7 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
           // ignore
         }
         await new Promise<void>((resolve) => {
-          const t = setTimeout(resolve, 5000)
+          const t = setTimeout(resolve, pollIntervalMs)
           controller.signal.addEventListener('abort', () => {
             clearTimeout(t)
             resolve()
@@ -808,7 +813,7 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
     pollEvm()
 
     return () => controller.abort()
-  }, [status, sourceTxId, sourceIsAlgorand, selectedSourceChainSymbol])
+  }, [status, sourceTxId, sourceIsAlgorand, selectedSourceChainSymbol, pollIntervalMs])
 
   // -- Cleanup: switch back to Algorand chain on unmount --
 

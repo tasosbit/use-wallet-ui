@@ -1,5 +1,18 @@
 import { getDefaultConfig as rkGetDefaultConfig } from '@rainbow-me/rainbowkit'
-import { mainnet } from 'wagmi/chains'
+import {
+  mainnet,
+  base,
+  bsc,
+  polygon,
+  arbitrum,
+  avalanche,
+  optimism,
+  celo,
+  sonic,
+  unichain,
+  linea,
+} from 'wagmi/chains'
+
 import {
   safeWallet,
   rainbowWallet,
@@ -17,6 +30,13 @@ import {
 } from './components/RainbowKitBridge'
 import { createBoundProvider } from './components/RainbowKitAutoProvider'
 import type { RainbowKitUIConfig } from './providers/WalletUIProvider'
+
+/**
+ * EVM chains supported by the Allbridge bridge integration.
+ * Registered in the wagmi config so that wallet operations (signTypedData,
+ * getConnectorClient, etc.) work when MetaMask is on any of these networks.
+ */
+const BRIDGE_CHAINS = [mainnet, base, bsc, polygon, arbitrum, avalanche, optimism, celo, sonic, unichain, linea]
 
 const DEFAULT_WALLETS = [
   {
@@ -62,8 +82,9 @@ function clearStaleWcPairings(): void {
  *   explicit `wallets` array to override).
  * - Clears stale WalletConnect v2 pairing data to prevent "No matching key"
  *   relay errors on mobile wallets.
- * - Ensures Ethereum mainnet is always included in the chain list so that
- *   WalletConnect v2 session negotiation succeeds with MetaMask Mobile.
+ * - Registers Allbridge-compatible EVM chains (mainnet, Base, BNB, Polygon,
+ *   Arbitrum, Avalanche, Optimism, Celo, Sonic, Unichain, Linea) so that
+ *   wagmi operations work regardless of which network the wallet is on.
  * - Sets `walletConnectParameters.metadata.redirect.universal` to the current
  *   origin so that MetaMask Mobile redirects back to the browser tab after
  *   signing, allowing the WalletConnect relay response to be delivered.
@@ -76,11 +97,13 @@ export const getDefaultConfig: typeof rkGetDefaultConfig = (params) => {
   const p = params as Record<string, any>
   const appUrl: string | undefined = p.appUrl ?? (typeof window !== 'undefined' ? window.location.origin : undefined)
 
-  // Ensure mainnet is in the chain list for WC session namespace compatibility.
+  // Merge bridge-compatible chains with user chains so that wagmi operations
+  // work regardless of which EVM network the wallet is currently on.
+  // User chains take precedence (listed first) to preserve the caller's ordering.
   const userChains: any[] = p.chains ?? []
-  const chains = userChains.some((c) => c.id === mainnet.id)
-    ? userChains
-    : [mainnet, ...userChains]
+  const userChainIds = new Set(userChains.map((c: any) => c.id))
+  const extraChains = BRIDGE_CHAINS.filter((c) => !userChainIds.has(c.id))
+  const chains = [...userChains, ...extraChains]
 
   // Default mobile redirect so MetaMask Mobile returns to the browser tab.
   const redirectUrl: string | undefined = typeof window !== 'undefined' ? window.location.origin : undefined

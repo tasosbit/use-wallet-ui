@@ -95,13 +95,13 @@ export function ReceivePanel({
       </div>
 
       <p className="text-xs text-[var(--wui-color-text-secondary)] mb-2 leading-relaxed">
-        This is your liquid EVM Algorand account. You can receive ALGO and any opted-in assets here, and manage your asset opt-ins below.
+        This is your Algo x EVM account. You can receive ALGO and any opted-in assets here, and manage your asset opt-ins below.
       </p>
 
       {/* Address display */}
       {activeAddress && (
         <div className="mb-4 bg-[var(--wui-color-bg-secondary)] rounded-lg p-3">
-          <p className="text-xs text-[var(--wui-color-text-secondary)] mb-1.5">Your ALGO address:</p>
+          <p className="text-xs text-[var(--wui-color-text-secondary)] mb-1.5">Your ALGO x EVM address:</p>
           <div className="flex items-center gap-2">
             <code className="text-sm font-medium text-[var(--wui-color-text)] flex-1 truncate">{activeAddress}</code>
             <CopyButton text={activeAddress} />

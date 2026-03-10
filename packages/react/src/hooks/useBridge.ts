@@ -228,11 +228,11 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
 
   // -- Derived values --
 
-  // @ts-ignore - metadata exists on LiquidEvmBaseWallet accounts
+  // @ts-ignore - metadata exists on AlgoXEvmBaseWallet accounts
   const evmAddress: string | null = (activeWallet?.activeAccount?.metadata?.evmAddress as string) ?? null
   const algorandAddress = activeAddress ?? null
-  // @ts-ignore - isLiquid exists on Liquid wallet metadata
-  const isLiquidEvm = !!activeWallet?.metadata?.isLiquid
+  // @ts-ignore - isAlgoXEvm exists on Algo x EVM wallet metadata
+  const isAlgoXEvm = !!activeWallet?.metadata?.isAlgoXEvm
 
   // Direction flag: true when bridging FROM Algorand TO an EVM chain
   const sourceIsAlgorand = selectedSourceChainSymbol === 'ALG'
@@ -1526,7 +1526,7 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
   }, [sourceIsAlgorand, handleAlgorandBridge, handleEvmBridge])
 
   return {
-    isAvailable: (isLiquidEvm || !!activeAddress) && sdkAvailable !== false,
+    isAvailable: (isAlgoXEvm || !!activeAddress) && sdkAvailable !== false,
     chains,
     chainsLoading,
     balancesLoading,

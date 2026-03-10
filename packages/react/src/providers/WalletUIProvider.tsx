@@ -12,7 +12,7 @@ import { BridgeDialogProvider } from './BridgeDialogProvider'
 import { decodeTransactions, TransactionDanger, type DecodedTransaction } from '../utils/decodeTransactions'
 
 import type { NfdLookupResponse, NfdView } from '../hooks/useNfd'
-import { LiquidEvmSdk } from 'liquid-accounts-evm'
+import { AlgoXEvmSdk } from 'algo-x-evm-sdk'
 
 // Extension message constants (duplicated from extension package to avoid cross-dependency)
 const EXT_MSG = {
@@ -490,7 +490,7 @@ export function WalletUIProvider({
   const requestBeforeSign = useCallback((txnGroup: algosdk.Transaction[] | Uint8Array[]) => {
     return new Promise<void>((resolve, reject) => {
       const { decodedTransactions, transactions, dangerous, genesisHash, genesisID } = decodeTransactions(txnGroup)
-      const messageRaw = LiquidEvmSdk.getSignPayload(transactions)
+      const messageRaw = AlgoXEvmSdk.getSignPayload(transactions)
       const message = `0x${Buffer.from(messageRaw).toString('hex')}`
 
       const wrappedResolve = () => {

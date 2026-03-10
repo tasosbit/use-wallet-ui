@@ -249,11 +249,26 @@ importers:
         specifier: ^0.25.0
         version: 0.25.0(rollup@4.55.1)(vite@6.4.1(@types/node@22.19.11)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.7.1))
 
+  packages/algo-x-evm-ui:
+    devDependencies:
+      '@tanstack/react-query':
+        specifier: 5.90.21
+        version: 5.90.21(react@19.2.4)
+      '@types/react':
+        specifier: 19.2.14
+        version: 19.2.14
+      react:
+        specifier: 19.2.4
+        version: 19.2.4
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+
   packages/liquid-companion-extension:
     dependencies:
-      '@d13co/liquid-ui':
+      '@d13co/algo-x-evm-ui':
         specifier: workspace:*
-        version: link:../liquid-ui
+        version: link:../algo-x-evm-ui
       '@tanstack/react-query':
         specifier: 5.90.21
         version: 5.90.21(react@19.2.4)
@@ -292,29 +307,14 @@ importers:
         specifier: 6.4.1
         version: 6.4.1(@types/node@22.19.11)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.7.1)
 
-  packages/liquid-ui:
-    devDependencies:
-      '@tanstack/react-query':
-        specifier: 5.90.21
-        version: 5.90.21(react@19.2.4)
-      '@types/react':
-        specifier: 19.2.14
-        version: 19.2.14
-      react:
-        specifier: 19.2.4
-        version: 19.2.4
-      typescript:
-        specifier: 5.9.3
-        version: 5.9.3
-
   packages/react:
     dependencies:
       '@algorandfoundation/algokit-utils':
         specifier: ^9.2.0
         version: 9.2.0(algosdk@3.5.2)
-      '@d13co/liquid-ui':
+      '@d13co/algo-x-evm-ui':
         specifier: workspace:*
-        version: link:../liquid-ui
+        version: link:../algo-x-evm-ui
       '@d13co/open-in':
         specifier: ^0.1.0
         version: 0.1.0
@@ -364,12 +364,12 @@ importers:
       '@wagmi/core':
         specifier: ^2.16.0
         version: 2.22.1(@tanstack/query-core@5.90.20)(@types/react@19.2.14)(react@19.2.4)(typescript@5.9.3)(use-sync-external-store@1.4.0(react@19.2.4))(viem@2.46.3(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.3.6))
+      algo-x-evm-sdk:
+        specifier: link:../../../evm-sdk
+        version: link:../../../evm-sdk
       algosdk:
         specifier: 3.5.2
         version: 3.5.2
-      liquid-accounts-evm:
-        specifier: link:../../../evm-sdk
-        version: link:../../../evm-sdk
       publint:
         specifier: 0.3.17
         version: 0.3.17

@@ -28,9 +28,9 @@ export default defineConfig({
         // bundling them causes duplicate instances and inflates bundle size.
         'algosdk',
         '@algorandfoundation/algokit-utils',
-        // liquid-accounts-evm is a peer dep that also transitively pulls in
+        // algo-x-evm-sdk is a peer dep that also transitively pulls in
         // viem; externalising it avoids bundling viem into this package.
-        'liquid-accounts-evm',
+        'algo-x-evm-sdk',
         // RainbowKit bridge externals (optional peer deps).
         // Use regex so subpath imports like @rainbow-me/rainbowkit/wallets and
         // wagmi/chains are also treated as external and not bundled into this

@@ -121,7 +121,7 @@ export function ManagePanel({
             </svg>
           </button>
           <h3 className="text-lg font-bold leading-none text-[var(--wui-color-text)] wallet-custom-font">
-            Manage Liquid Account
+            Manage Algo x EVM Account
           </h3>
           {onRefresh && (
             <button

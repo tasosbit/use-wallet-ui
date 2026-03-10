@@ -87,7 +87,7 @@ function ConnectedWalletMenuContent({ children }: ConnectedWalletMenuProps) {
 
   const optedInAssetIds = React.useMemo(() => new Set(allHoldings.map((a) => Number(a.assetId))), [allHoldings])
 
-  // Get EVM controller address from account metadata for Liquid EVM wallets
+  // Get EVM controller address from account metadata for Algo x EVM wallets
   const evmAddress = React.useMemo(() => {
     return (activeWallet?.activeAccount?.metadata?.evmAddress as string) ?? null
   }, [activeWallet])
@@ -404,11 +404,11 @@ function ConnectedWalletMenuContent({ children }: ConnectedWalletMenuProps) {
                           <div>
                             {
                               // @ts-ignore
-                              activeWallet.metadata.isLiquid && (
+                              activeWallet.metadata.isAlgoXEvm && (
                                 <button
                                   onClick={() => setMode('manage')}
                                   className="flex-1 py-2 px-4 bg-[var(--wui-color-danger-bg)] text-[var(--wui-color-danger-text)] font-medium rounded-xl hover:bg-[var(--wui-color-danger-bg-hover)] transition-colors text-sm flex items-center justify-center"
-                                  title="Manage Liquid Account"
+                                  title="Manage Algo x EVM Account"
                                 >
                                   <svg
                                     xmlns="http://www.w3.org/2000/svg"

@@ -100,11 +100,12 @@ export const getDefaultConfig = (params: Parameters<typeof rkGetDefaultConfig>[0
 
   // Merge bridge-compatible chains with user chains so that wagmi operations
   // work regardless of which EVM network the wallet is currently on.
-  // User chains take precedence (listed first) to preserve the caller's ordering.
+  // Bridge chains first (mainnet at index 0) so wagmi's auto-switch after
+  // connect targets a real EVM chain, not a virtual one like algorandChain.
   const userChains: any[] = p.chains ?? []
-  const userChainIds = new Set(userChains.map((c: any) => c.id))
-  const extraChains = BRIDGE_CHAINS.filter((c) => !userChainIds.has(c.id))
-  const chains = [...userChains, ...extraChains]
+  const bridgeChainIds = new Set(BRIDGE_CHAINS.map((c) => c.id))
+  const extraUserChains = userChains.filter((c: any) => !bridgeChainIds.has(c.id))
+  const chains = [...BRIDGE_CHAINS, ...extraUserChains]
 
   // Default mobile redirect so MetaMask Mobile returns to the browser tab.
   const redirectUrl: string | undefined = typeof window !== 'undefined' ? window.location.origin : undefined

@@ -184,23 +184,30 @@ export const getDefaultConfig = (params: Parameters<typeof rkGetDefaultConfig>[0
         console.log(`[wagmi] connector "${connector.name}" change`, data)
       })
 
-      // Wrap getProvider to log all EIP-1193 request/response traffic
+      // Wrap getProvider to log all EIP-1193 request/response traffic.
+      // We temporarily restore the original `request` before calling it so that
+      // internal SDK calls (e.g. MetaMask SDK calling `this.request(...)`) do
+      // NOT recurse through our wrapper and overflow the stack.
       const origGetProvider = connector.getProvider.bind(connector)
       connector.getProvider = async (...args: any[]) => {
         const provider = await origGetProvider(...args)
         if (provider && !(provider as any).__wuiDebugWrapped) {
-          const origRequest = provider.request.bind(provider)
-          provider.request = async (req: { method: string; params?: unknown[] }) => {
-            console.log(`[wagmi:rpc] → ${connector.name} ${req.method}`, req.params ?? [])
+          const origRequest = provider.request
+          const wrappedRequest = async (req: { method: string; params?: unknown[] }) => {
+            provider.request = origRequest // restore original so internal SDK calls bypass wrapper
+            console.log(`[wagmi:rpc] >> ${connector.name} ${req.method}`, req.params ?? [])
             try {
-              const result = await origRequest(req)
-              console.log(`[wagmi:rpc] ← ${connector.name} ${req.method}`, result)
+              const result = await origRequest.call(provider, req)
+              console.log(`[wagmi:rpc] << ${connector.name} ${req.method}`, result)
               return result
             } catch (err) {
-              console.error(`[wagmi:rpc] ✗ ${connector.name} ${req.method}`, err)
+              console.error(`[wagmi:rpc] ERR ${connector.name} ${req.method}`, err)
               throw err
+            } finally {
+              provider.request = wrappedRequest // re-install wrapper for future external calls
             }
           }
+          provider.request = wrappedRequest
           ;(provider as any).__wuiDebugWrapped = true
         }
         return provider

@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react'
+import { type ReactNode, memo } from 'react'
 import { WagmiProvider } from 'wagmi'
 import { type QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RainbowKitProvider, lightTheme, darkTheme } from '@rainbow-me/rainbowkit'
@@ -12,7 +12,7 @@ import type { ResolvedTheme } from '../hooks/useResolvedTheme'
  * to pass `queryClient`, `resolvedTheme`, `walletManager`, and `children`.
  */
 export function createBoundProvider(wagmiConfig: WagmiConfig, bridgeState: RainbowKitBridgeState) {
-  return function RainbowKitAutoProvider({
+  return memo(function RainbowKitAutoProvider({
     queryClient,
     resolvedTheme,
     walletManager,
@@ -34,5 +34,5 @@ export function createBoundProvider(wagmiConfig: WagmiConfig, bridgeState: Rainb
         </QueryClientProvider>
       </WagmiProvider>
     )
-  }
+  })
 }

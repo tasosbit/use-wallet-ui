@@ -490,7 +490,7 @@ export function BridgePanel({
           </svg>
           {receivedAmount && destinationTokenSymbol && (
             <p className="mt-1.5 text-sm text-[var(--wui-color-text-secondary)]">
-              Received{' '}
+              {sourceChainSymbol === 'ALG' ? 'Sent' : 'Received'}{' '}
               <span className="font-medium text-[var(--wui-color-text)]">
                 {receivedAmount} {destinationTokenSymbol}
               </span>
@@ -500,18 +500,6 @@ export function BridgePanel({
             <p className="mt-1.5 text-xs text-[var(--wui-color-text-tertiary)] flex items-center justify-center gap-1">
               Source TX: <span className="font-mono">{formatShortAddr(sourceTxId)}</span>
               <CopyButton text={sourceTxId} variant="icon" title="Copy transaction ID" />
-            </p>
-          )}
-          {(evmAddress || algorandAddress) && (
-            <p className="mt-1 text-xs">
-              <a
-                href={`https://core.allbridge.io/explorer/address/${sourceIsAlgorand ? algorandAddress : evmAddress}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[var(--wui-color-primary)] hover:underline inline-flex items-center gap-1"
-              >
-                Allbridge Explorer <ExternalLinkIcon />
-              </a>
             </p>
           )}
           {destinationTxId && (
@@ -534,6 +522,19 @@ export function BridgePanel({
               )}
             </p>
           )}
+
+          {(evmAddress || algorandAddress) && (
+            <p className="mt-1 text-xs">
+              <a
+                href={`https://core.allbridge.io/explorer/address/${sourceIsAlgorand ? algorandAddress : evmAddress}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[var(--wui-color-primary)] hover:underline inline-flex items-center gap-1"
+              >
+                Allbridge Explorer <ExternalLinkIcon />
+              </a>
+            </p>
+          )}
           <button onClick={onReset} className="mt-3 text-sm text-[var(--wui-color-primary)] hover:underline">
             Close
           </button>
@@ -544,7 +545,11 @@ export function BridgePanel({
       {status === 'error' && (
         <div className="text-center py-4">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mx-auto mb-2 text-red-500" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            <path
+              fillRule="evenodd"
+              d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+              clipRule="evenodd"
+            />
           </svg>
           <p className="text-sm font-medium text-[var(--wui-color-text)] mb-1">Bridge failed</p>
           {error && <p className="text-xs text-red-500 break-words mb-1.5">{error}</p>}
@@ -559,7 +564,6 @@ export function BridgePanel({
           </button>
         </div>
       )}
-
     </>
   )
 }
@@ -612,7 +616,6 @@ function Countdown({ estimatedTimeMs, waitingSince }: { estimatedTimeMs: number;
   )
 }
 
-
 function BridgeProgress({
   amount,
   sourceTokenSymbol,
@@ -628,8 +631,12 @@ function BridgeProgress({
   sourceTxId,
   explorerAddress,
 }: BridgeProgressProps) {
-  const sendDone = transferStatus != null && transferStatus.sendConfirmationsNeeded > 0 && transferStatus.sendConfirmations >= transferStatus.sendConfirmationsNeeded
-  const sigsDone = transferStatus != null && transferStatus.signaturesNeeded > 0 && transferStatus.signaturesCount >= transferStatus.signaturesNeeded
+  const sendDone =
+    transferStatus != null &&
+    transferStatus.sendConfirmationsNeeded > 0 &&
+    transferStatus.sendConfirmations >= transferStatus.sendConfirmationsNeeded
+  const sigsDone =
+    transferStatus != null && transferStatus.signaturesNeeded > 0 && transferStatus.signaturesCount >= transferStatus.signaturesNeeded
   const receiveDone =
     transferStatus?.receiveConfirmations != null &&
     transferStatus.receiveConfirmationsNeeded != null &&
@@ -743,17 +750,20 @@ function BridgeProgress({
             Source TX: <span className="font-mono">{formatShortAddr(sourceTxId)}</span>
           </span>
           <CopyButton text={sourceTxId} variant="icon" title="Copy transaction ID" />
-          {explorerAddress && (
-            <a
-              href={`https://core.allbridge.io/explorer/address/${explorerAddress}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="ml-0.5 p-0.5 rounded hover:bg-[var(--wui-color-bg-secondary)] text-[var(--wui-color-text-tertiary)] hover:text-[var(--wui-color-text-secondary)] transition-colors"
-              title="View on Allbridge Explorer"
-            >
-              <ExternalLinkIcon />
-            </a>
-          )}
+        </div>
+      )}
+
+      {explorerAddress && (
+        <div className="flex items-center justify-center text-xs text-[var(--wui-color-text-tertiary)] mt-3 gap-0.5">
+          <a
+            href={`https://core.allbridge.io/explorer/address/${explorerAddress}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ml-0.5 p-0.5 rounded hover:bg-[var(--wui-color-bg-secondary)] text-[var(--wui-color-text-tertiary)] hover:text-[var(--wui-color-text-secondary)] transition-colors"
+            title="View on Allbridge Explorer"
+          >
+            View on Allbridge <ExternalLinkIcon />
+          </a>
         </div>
       )}
     </div>

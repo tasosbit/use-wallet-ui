@@ -1,6 +1,6 @@
 {
   "name": "@txnlab/use-wallet-ui-react",
-  "version": "1.0.21",
+  "version": "1.0.22",
   "description": "React components for use-wallet UI",
   "type": "module",
   "main": "dist/cjs/index.cjs",
@@ -106,6 +106,7 @@
     "tailwind-merge": "3.4.1"
   },
   "devDependencies": {
+    "@txnlab/use-wallet-react": "link:../../../../use-wallet/packages/use-wallet-react",
     "@allbridge/bridge-core-sdk": "^3.29.1",
     "@rainbow-me/rainbowkit": "^2.2.0",
     "@tailwindcss/cli": "4.1.18",

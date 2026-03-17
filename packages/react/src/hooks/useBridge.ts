@@ -31,6 +31,14 @@ import {
 
 // -- Public types for the bridge panel --
 
+/** Slimmed-down transfer status exposed by the hook (subset of TransferStatusResponse). */
+export interface BridgeTransferStatus {
+  send: { confirmations: number; confirmationsNeeded: number } | null
+  signaturesCount: number
+  signaturesNeeded: number
+  receive: { confirmations: number; confirmationsNeeded: number; txId?: string } | null
+}
+
 export interface BridgeChain {
   chainSymbol: string
   chainName: string
@@ -109,7 +117,7 @@ export interface UseBridgeReturn {
   // Transfer tracking
   estimatedTimeMs: number | null
   waitingSince: number | null
-  transferStatus: TransferStatusResponse | null
+  transferStatus: BridgeTransferStatus | null
 
   // Opt-in tracking
   optInNeeded: boolean
@@ -1201,29 +1209,6 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
         return bytes
       })
 
-      // Decode and log each transaction for investigation
-      for (let i = 0; i < txBytes.length; i++) {
-        try {
-          const decoded = algosdk.decodeUnsignedTransaction(txBytes[i]!)
-          console.log(`[Allbridge] ALG decoded tx[${i}]`, {
-            type: decoded.type,
-            txID: decoded.txID(),
-            from: algosdk.encodeAddress(decoded.from.publicKey),
-            to: decoded.to ? algosdk.encodeAddress(decoded.to.publicKey) : undefined,
-            assetIndex: decoded.assetIndex,
-            amount: decoded.amount?.toString(),
-            appIndex: decoded.appIndex,
-            appArgs: decoded.appArgs?.map((a) => Buffer.from(a).toString('hex')),
-            accounts: decoded.accounts?.map((a) => algosdk.encodeAddress(a.publicKey)),
-            foreignApps: decoded.foreignApps?.map((a) => a.toString()),
-            foreignAssets: decoded.foreignAssets?.map((a) => a.toString()),
-            note: decoded.note ? Buffer.from(decoded.note).toString('hex') : undefined,
-          })
-        } catch {
-          console.log(`[Allbridge] ALG tx[${i}] decode failed, raw hex:`, rawTxs[i])
-        }
-      }
-
       // Find the application call transaction — Allbridge status API
       // tracks by the app call txid, not the asset transfer txid.
       let appCallTxId: string | null = null
@@ -1250,8 +1235,7 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
       const { txid } = await algodClient.sendRawTransaction(signedBytes).do()
       // Wait for initial confirmation using whichever txid we have
       const confirmTxId = appCallTxId ?? txid
-      const txInfo = await algosdk.waitForConfirmation(algodClient, confirmTxId, 4)
-      const confirmedRound = Number((txInfo as unknown as Record<string, unknown>)['confirmed-round'])
+      await algosdk.waitForConfirmation(algodClient, confirmTxId, 4)
 
       // Use the app call txid for status tracking (Allbridge expects it)
       setSourceTxId(confirmTxId)
@@ -1691,14 +1675,22 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
     waitingSince,
     transferStatus: transferStatus
       ? {
-          ...transferStatus,
           send: {
             confirmations: Math.max(transferStatus.send?.confirmations ?? 0, localSendConfirmations),
             confirmationsNeeded: sourceIsAlgorand ? 1 : (transferStatus.send?.confirmationsNeeded ?? sourceConfirmationsNeeded ?? 0),
           },
+          signaturesCount: transferStatus.signaturesCount,
+          signaturesNeeded: transferStatus.signaturesNeeded,
+          receive: transferStatus.receive
+            ? {
+                confirmations: transferStatus.receive.confirmations,
+                confirmationsNeeded: transferStatus.receive.confirmationsNeeded,
+                txId: transferStatus.receive.txId,
+              }
+            : null,
         }
       : localSendConfirmations > 0 && sourceConfirmationsNeeded != null
-        ? ({
+        ? {
             send: {
               confirmations: localSendConfirmations,
               confirmationsNeeded: sourceIsAlgorand ? 1 : sourceConfirmationsNeeded,
@@ -1706,7 +1698,7 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
             signaturesCount: 0,
             signaturesNeeded: 0,
             receive: null,
-          } as TransferStatusResponse)
+          }
         : null,
     optInNeeded,
     optInSigned,

@@ -204,7 +204,7 @@ export const getDefaultConfig = (params: Parameters<typeof rkGetDefaultConfig>[0
               return async (req: { method: string; params?: unknown[] }) => {
                 console.log(`[wagmi:rpc] >> ${connector.name} ${req.method}`, req.params ?? [])
                 try {
-                  const result = await target.request(req)
+                  const result = await (target as Record<string, Function>).request(req)
                   console.log(`[wagmi:rpc] << ${connector.name} ${req.method}`, result)
                   return result
                 } catch (err) {

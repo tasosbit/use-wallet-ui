@@ -1,5 +1,5 @@
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { useBridge, type UseBridgeReturn } from '../hooks/useBridge'
+import { useBridge, BRIDGE_PERSIST_KEY, type UseBridgeReturn } from '../hooks/useBridge'
 
 export interface BridgeDialogContextType {
   bridge: UseBridgeReturn
@@ -26,7 +26,9 @@ const PROCESSING_STATUSES = new Set([
 ])
 
 export function BridgeDialogProvider({ children }: { children: ReactNode }) {
-  const [isOpen, setIsOpen] = useState(false)
+  const [isOpen, setIsOpen] = useState(() => {
+    try { return localStorage.getItem(BRIDGE_PERSIST_KEY) !== null } catch { return false }
+  })
   const [isMinimized, setIsMinimized] = useState(false)
   const bridge = useBridge({ enabled: isOpen })
   const prevStatusRef = useRef(bridge.status)
@@ -53,9 +55,13 @@ export function BridgeDialogProvider({ children }: { children: ReactNode }) {
     setIsMinimized(false)
   }, [])
 
-  // Auto-close if wallet disconnects (bridge becomes unavailable)
+  // Auto-close if wallet disconnects (bridge becomes unavailable).
+  // Skip if persisted bridge state exists — wallet may still be reconnecting after reload.
   useEffect(() => {
     if (!bridge.isAvailable && isOpen) {
+      try {
+        if (localStorage.getItem(BRIDGE_PERSIST_KEY)) return
+      } catch {}
       setIsOpen(false)
       setIsMinimized(false)
     }

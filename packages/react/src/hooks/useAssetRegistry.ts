@@ -42,9 +42,12 @@ export function useAssetRegistry(): UseAssetRegistryReturn {
 
     const loadRegistry = async () => {
       try {
-        const lastUpdated = await AssetCache.getLastUpdated()
-        console.log('[useAssetRegistry] lastUpdated:', lastUpdated, 'stale:', lastUpdated ? Date.now() - lastUpdated > STALENESS_MS : 'no timestamp')
-        if (lastUpdated && Date.now() - lastUpdated < STALENESS_MS) {
+        const [lastUpdated, cachedCount] = await Promise.all([
+          AssetCache.getLastUpdated(),
+          AssetCache.getCount(),
+        ])
+        console.log('[useAssetRegistry] lastUpdated:', lastUpdated, 'stale:', lastUpdated ? Date.now() - lastUpdated > STALENESS_MS : 'no timestamp', 'cachedCount:', cachedCount)
+        if (lastUpdated && Date.now() - lastUpdated < STALENESS_MS && cachedCount > 0) {
           setRegistryLoaded(true)
           return
         }

@@ -139,6 +139,51 @@ const LOW_BALANCE_THRESHOLD_MICRO = 100_000
 // to be converted to ALGO on the destination chain.
 const MAX_EXTRA_GAS_USD = 1
 
+// DFX service URL for deferred transaction execution
+const DFX_API_URL = 'https://dfx-api.algorand.co'
+
+// localStorage key for persisting bridge state across page reloads
+export const BRIDGE_PERSIST_KEY = '__wui_bridge_state__'
+
+/** Minimal bridge state persisted to localStorage for reload recovery. */
+interface PersistedBridgeState {
+  status: BridgeStatus
+  sourceTxId: string
+  sourceChainSymbol: string
+  sourceTokenSymbol: string
+  destChainSymbol: string | null
+  destTokenSymbol: string | null
+  amount: string
+  waitingSince: number
+  estimatedTimeMs: number | null
+  optInNeeded: boolean
+  optInSigned: boolean
+  persistedAt: number
+}
+
+/** Read persisted bridge state from localStorage, or null if absent/stale/corrupt. */
+function getPersistedState(): PersistedBridgeState | null {
+  try {
+    const raw = localStorage.getItem(BRIDGE_PERSIST_KEY)
+    if (!raw) {
+      console.log('[useBridge] getPersistedState: no persisted state found')
+      return null
+    }
+    const p = JSON.parse(raw) as PersistedBridgeState
+    const ageMs = Date.now() - p.persistedAt
+    // Ignore state older than 1 hour
+    if (ageMs > 3_600_000) {
+      console.log('[useBridge] getPersistedState: discarding stale state', { status: p.status, sourceTxId: p.sourceTxId, ageMs })
+      localStorage.removeItem(BRIDGE_PERSIST_KEY)
+      return null
+    }
+    console.log('[useBridge] getPersistedState: found persisted state', { status: p.status, sourceTxId: p.sourceTxId, sourceChain: p.sourceChainSymbol, destChain: p.destChainSymbol, ageMs })
+    return p
+  } catch {
+    return null
+  }
+}
+
 // Convert a float amount string to integer (smallest token units) for ERC-20 approve.
 // Avoids floating-point by splitting at the decimal point and padding.
 function floatToSmallestUnit(amount: string, decimals: number): string {
@@ -163,6 +208,9 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
   const { activeAddress, activeWallet, algodClient, signTransactions } = useWallet()
   const queryClient = useQueryClient()
   const enabled = options.enabled ?? true
+
+  // Persisted bridge state for reload recovery
+  const persistedRef = useRef(getPersistedState())
 
   // SDK state
   const sdkRef = useRef<AllbridgeCoreSdk | null>(null)
@@ -752,7 +800,7 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
 
     poll()
     return () => controller.abort()
-  }, [status, sourceTxId, selectedSourceChainSymbol, pollIntervalMs])
+  }, [status, sourceTxId, selectedSourceChainSymbol, pollIntervalMs, sdkAvailable])
 
   // -- EVM source chain confirmation polling --
   // Tracks EVM block confirmations in parallel with Allbridge API polling.
@@ -823,10 +871,68 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // -- Restore persisted bridge state after chains are loaded --
+
+  useEffect(() => {
+    if (!enabled || allChains.length === 0 || !persistedRef.current) return
+    const p = persistedRef.current
+    persistedRef.current = null
+
+    // console.log('[useBridge] restoring persisted state:', { status: p.status, sourceTxId: p.sourceTxId, sourceChain: p.sourceChainSymbol, sourceToken: p.sourceTokenSymbol, destChain: p.destChainSymbol, destToken: p.destTokenSymbol, amount: p.amount, optInNeeded: p.optInNeeded, optInSigned: p.optInSigned })
+
+    setStatus(p.status as BridgeStatus)
+    setSourceTxId(p.sourceTxId)
+    setSelectedSourceChainSymbol(p.sourceChainSymbol)
+    setSelectedSourceTokenSymbol(p.sourceTokenSymbol)
+    setSelectedDestChainSymbol(p.destChainSymbol)
+    setSelectedDestTokenSymbol(p.destTokenSymbol)
+    setAmount(p.amount)
+    setWaitingSince(p.waitingSince)
+    setEstimatedTimeMs(p.estimatedTimeMs)
+    setOptInNeeded(p.optInNeeded)
+    setOptInSigned(p.optInSigned)
+    userHasSelectedChainRef.current = true
+  }, [enabled, allChains.length]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // -- Persist bridge state to localStorage when in long-running states --
+
+  useEffect(() => {
+    const shouldPersist =
+      (status === 'waiting' || status === 'watching-funding' || status === 'opt-in-sent') &&
+      sourceTxId &&
+      selectedSourceChainSymbol &&
+      selectedSourceTokenSymbol
+    if (shouldPersist) {
+      try {
+        const state: PersistedBridgeState = {
+          status: 'waiting', // always restore as 'waiting' — imperative flows (opt-in, funding watch) cannot resume
+          sourceTxId,
+          sourceChainSymbol: selectedSourceChainSymbol,
+          sourceTokenSymbol: selectedSourceTokenSymbol,
+          destChainSymbol: selectedDestChainSymbol,
+          destTokenSymbol: selectedDestTokenSymbol,
+          amount,
+          waitingSince: waitingSince ?? Date.now(),
+          estimatedTimeMs,
+          optInNeeded,
+          optInSigned,
+          persistedAt: Date.now(),
+        }
+        // console.log('[useBridge] persisting state:', { status, sourceTxId, sourceChain: selectedSourceChainSymbol, sourceToken: selectedSourceTokenSymbol, destChain: selectedDestChainSymbol, destToken: selectedDestTokenSymbol, amount, optInNeeded, optInSigned })
+        localStorage.setItem(BRIDGE_PERSIST_KEY, JSON.stringify(state))
+      } catch {}
+    } else if (status === 'success' || status === 'error' || status === 'idle') {
+      // console.log('[useBridge] clearing persisted state:', { status })
+      try { localStorage.removeItem(BRIDGE_PERSIST_KEY) } catch {}
+    }
+  }, [status, sourceTxId]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // -- Actions --
 
   const reset = useCallback(() => {
+    console.log('[useBridge] reset: clearing persisted state')
     abortRef.current?.abort()
+    try { localStorage.removeItem(BRIDGE_PERSIST_KEY) } catch {}
     setAmount('')
     setReceivedAmount(null)
     setStatus('idle')
@@ -961,7 +1067,15 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
       throw new Error('No signed opt-in transaction available')
     }
 
-    await algodClient.sendRawTransaction(signedOptInRef.current).do()
+    try {
+      await algodClient.sendRawTransaction(signedOptInRef.current).do()
+    } catch (err) {
+      // DFX may have already submitted this transaction — that's expected.
+      // We still wait for confirmation below.
+      const msg = getErrorMessage(err)
+      if (!/already in ledger/i.test(msg)) throw err
+      console.log('[useBridge] opt-in already in ledger (submitted by DFX)')
+    }
     await algosdk.waitForConfirmation(algodClient, optInTxIdRef.current, 4)
     setOptInConfirmed(true)
     queryClient.invalidateQueries({ queryKey: ['account-info'] })
@@ -1000,6 +1114,39 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
     // If we exhausted the window, the pre-signed tx is expired
     setWatchingForFunding(false)
     throw new Error('Timed out waiting for account funding. Please try again.')
+  }
+
+  /** Submit the signed opt-in transaction to DFX for deferred execution.
+   *  Falls back to direct submission if DFX rejects (account already funded). */
+  async function submitOptInToDfx(): Promise<void> {
+    if (!signedOptInRef.current) throw new Error('No signed opt-in transaction')
+
+    const bytes = signedOptInRef.current
+    let binary = ''
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]!)
+    }
+    const b64 = btoa(binary)
+
+    try {
+      const res = await fetch(`${DFX_API_URL}/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ signedTxns: [b64] }),
+      })
+      const result = (await res.json()) as { status: string; txId?: string; error?: string }
+      console.log('[useBridge] DFX submit response:', result)
+
+      if (result.status === 'deferred') {
+        // DFX accepted — it will submit when the account has funds
+        return
+      }
+    } catch (err) {
+      console.warn('[useBridge] DFX submission failed, falling back to direct submit:', err)
+    }
+
+    // DFX rejected (already valid) or unreachable — submit directly
+    await submitOptIn()
   }
 
   // -- Algorand → EVM bridge handler --
@@ -1199,12 +1346,12 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
         }
       }
 
-      // 3. If opt-in needed and NOT already on source EVM chain, sign opt-in
-      //    first while we're still on Algorand. If we ARE on the source chain,
-      //    defer opt-in signing until after the bridge tx to save a chain switch.
-      if (optInCheck.needed && !onSourceEvmChain) {
+      // 3. If opt-in needed, ALWAYS sign it first (before any EVM operations),
+      //    then submit to DFX for deferred execution when funds arrive.
+      if (optInCheck.needed) {
         setStatus('opting-in')
         await buildAndSignOptIn(dstSdkToken)
+        await submitOptInToDfx()
       }
 
       // 4. Switch to source EVM chain (skip if already there)
@@ -1476,31 +1623,25 @@ export function useBridge(options: UseBridgeOptions = {}): UseBridgeReturn {
       setSourceTxId(txHash)
       setWaitingSince(Date.now())
 
-      // 8. If opt-in needed and we were already on the source EVM chain,
-      //    sign opt-in now (the chain switch was deferred to avoid an extra switch).
-      if (optInCheck.needed && onSourceEvmChain) {
-        setStatus('opting-in')
-        await buildAndSignOptIn(dstSdkToken)
-      }
-
-      // 10. Handle opt-in submission
-      setStatus('waiting')
-
+      // Opt-in was already signed and submitted to DFX in step 3.
+      // DFX will submit when the account has funds. As a local backup,
+      // also watch for funding and submit directly (submitOptIn handles
+      // the "already in ledger" race if DFX executes first).
       if (optInCheck.needed) {
         if (optInCheck.canAfford) {
-          // Submit opt-in immediately
           setStatus('opt-in-sent')
           await submitOptIn()
           setStatus('waiting')
         } else {
-          // Watch for Allbridge funding, then submit opt-in
           setStatus('watching-funding')
           await watchForFundingAndOptIn()
           setStatus('waiting')
         }
+      } else {
+        setStatus('waiting')
       }
 
-      // 11. Transfer status polling takes over via the useEffect above
+      // Transfer status polling takes over via the useEffect above
     } catch (err) {
       console.error('[useBridge] Bridge failed:', err)
       setStatus('error')

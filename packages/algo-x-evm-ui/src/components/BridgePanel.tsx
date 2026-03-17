@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { CopyButton } from './CopyButton'
+import { ExternalLinkIcon } from './ExternalLinkIcon'
 import { Spinner } from './Spinner'
 
 export interface BridgeChainDisplay {
@@ -497,7 +498,7 @@ export function BridgePanel({
           )}
           {sourceTxId && (
             <p className="mt-1.5 text-xs text-[var(--wui-color-text-tertiary)] flex items-center justify-center gap-1">
-              TX: <span className="font-mono">{formatShortAddr(sourceTxId)}</span>
+              Source TX: <span className="font-mono">{formatShortAddr(sourceTxId)}</span>
               <CopyButton text={sourceTxId} variant="icon" title="Copy transaction ID" />
             </p>
           )}
@@ -639,15 +640,6 @@ function BridgeProgress({
         You can safely minimize this dialog and browse, just stay within the site to ensure your transaction completes as expected.
       </p>
 
-      {sourceTxId && (
-        <div className="flex items-center justify-center text-xs text-[var(--wui-color-text-tertiary)] mb-2">
-          <span>
-            {sourceChainName ?? 'Source'} Txn: <span className="font-mono">{formatShortAddr(sourceTxId)}</span>
-          </span>
-          <CopyButton text={sourceTxId} variant="icon" />
-        </div>
-      )}
-
       <div className="inline-flex flex-col gap-3 self-center">
         {/* Source confirmations */}
         <div className="flex items-center gap-2 text-xs">
@@ -728,6 +720,25 @@ function BridgeProgress({
       {/* ETA countdown */}
       {estimatedTimeMs != null && waitingSince != null && !receiveDone && (
         <Countdown estimatedTimeMs={estimatedTimeMs} waitingSince={waitingSince} />
+      )}
+
+      {/* Source transaction ID */}
+      {sourceTxId && (
+        <div className="flex items-center justify-center text-xs text-[var(--wui-color-text-tertiary)] mt-3 gap-0.5">
+          <span>
+            Source TX: <span className="font-mono">{formatShortAddr(sourceTxId)}</span>
+          </span>
+          <CopyButton text={sourceTxId} variant="icon" title="Copy transaction ID" />
+          <a
+            href={`https://explorer-variant-filter.api.allbridgecoreapi.net/search?q=${sourceTxId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ml-0.5 p-0.5 rounded hover:bg-[var(--wui-color-bg-secondary)] text-[var(--wui-color-text-tertiary)] hover:text-[var(--wui-color-text-secondary)] transition-colors"
+            title="View on Allbridge Explorer"
+          >
+            <ExternalLinkIcon />
+          </a>
+        </div>
       )}
     </div>
   )

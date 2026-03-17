@@ -1,4 +1,5 @@
 import { useWallet } from '@txnlab/use-wallet-react'
+import { AssetCache } from '@d13co/algo-x-evm-ui'
 import { useCallback, useEffect, useState } from 'react'
 
 export interface AssetLookupInfo {
@@ -47,6 +48,20 @@ export function useAssetLookup(options: { enabled?: boolean } = {}): UseAssetLoo
 
     const timer = setTimeout(async () => {
       try {
+        // Try the local registry cache first (instant, no network call)
+        const cached = await AssetCache.getById(assetId)
+        if (cached) {
+          setAssetInfo({
+            index: cached.index,
+            name: cached.name || 'Unnamed Asset',
+            unitName: cached.unitName || '',
+            decimals: cached.decimals,
+          })
+          setIsLoading(false)
+          return
+        }
+
+        // Fall back to algod
         const result = await algodClient.getAssetByID(assetId).do()
         setAssetInfo({
           index: Number(result.index),

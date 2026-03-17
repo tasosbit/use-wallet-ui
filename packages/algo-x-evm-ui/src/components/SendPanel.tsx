@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { AssetHoldingDisplay } from './ManagePanel'
 import { Spinner } from './Spinner'
 import { TransactionStatus, type TransactionStatusValue } from './TransactionStatus'
@@ -90,12 +90,10 @@ export function SendPanel({
 
   const [reserveFees, setReserveFees] = useState(true)
   const [showReserveOption, setShowReserveOption] = useState(false)
+  const receiverInputRef = useRef<HTMLInputElement>(null)
 
   // Account can close out when MBR is baseline (no asset opt-ins)
-  const canCloseOut =
-    totalBalance != null &&
-    availableBalance != null &&
-    Math.abs(totalBalance - availableBalance - BASE_MBR) < 0.000001
+  const canCloseOut = totalBalance != null && availableBalance != null && Math.abs(totalBalance - availableBalance - BASE_MBR) < 0.000001
 
   // When closing out, use total balance; otherwise use available balance
   const isClosingOut = showReserveOption && !reserveFees && canCloseOut
@@ -119,9 +117,7 @@ export function SendPanel({
 
   const availableLabel =
     algoBalanceLabel ??
-    (sendType === 'asa' && selectedAsset
-      ? `Available: ${selectedAsset.amount} ${selectedAsset.unitName || selectedAsset.name}`
-      : null)
+    (sendType === 'asa' && selectedAsset ? `Available: ${selectedAsset.amount} ${selectedAsset.unitName || selectedAsset.name}` : null)
 
   const computeAlgoMax = (reserve: boolean) => {
     if (reserve) {
@@ -146,6 +142,7 @@ export function SendPanel({
       setShowReserveOption(false)
       setAmount(selectedAsset.amount)
     }
+    receiverInputRef.current?.focus()
   }
 
   const handleToggleReserve = () => {
@@ -165,11 +162,7 @@ export function SendPanel({
 
   // Full balance ASA send — show opt-out option
   const isZeroAsaBalance = sendType === 'asa' && selectedAsset != null && parseFloat(selectedAsset.amount) === 0
-  const isFullAsaAmount =
-    sendType === 'asa' &&
-    selectedAsset != null &&
-    amount !== '' &&
-    amount === selectedAsset.amount
+  const isFullAsaAmount = sendType === 'asa' && selectedAsset != null && amount !== '' && amount === selectedAsset.amount
 
   // When opting out of a zero-balance asset, auto-fill receiver with self and set amount to 0
   const isZeroBalanceOptOut = isZeroAsaBalance && optOut === true
@@ -224,6 +217,7 @@ export function SendPanel({
                 type="text"
                 inputMode="decimal"
                 placeholder="Amount"
+                autoFocus={true}
                 value={amount}
                 onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ''))}
                 className="w-full rounded-lg border border-[var(--wui-color-border)] bg-[var(--wui-color-bg-secondary)] py-2.5 px-3 pr-12 text-sm text-[var(--wui-color-text)] placeholder:text-[var(--wui-color-text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--wui-color-primary)] focus:border-transparent"
@@ -283,6 +277,7 @@ export function SendPanel({
           {!isZeroBalanceOptOut && (
             <div className="mb-3">
               <input
+                ref={receiverInputRef}
                 type="text"
                 placeholder="Receiver ALGO address"
                 value={receiver}
@@ -293,7 +288,9 @@ export function SendPanel({
           )}
 
           {/* Invalid receiver address */}
-          {receiverAddressError && !isZeroBalanceOptOut && <p className="mb-3 text-xs text-[var(--wui-color-danger-text)] break-words">{receiverAddressError}</p>}
+          {receiverAddressError && !isZeroBalanceOptOut && (
+            <p className="mb-3 text-xs text-[var(--wui-color-danger-text)] break-words">{receiverAddressError}</p>
+          )}
 
           {/* Receiver opt-in check feedback */}
           {sendType === 'asa' && receiverOptInStatus === 'not-opted-in' && !isZeroBalanceOptOut && (
@@ -314,7 +311,7 @@ export function SendPanel({
               </label>
               {optOut && (
                 <p className="mt-1 ml-5 text-xs text-[var(--wui-color-text-tertiary)] leading-relaxed">
-                  You will not be able to receive {optOutLabel} until you opt back in. 0.1Ⱥ available balance will be reclaimed.
+                  You will not be able to receive {optOutLabel} until you opt back in. This will reclaim 0.1Ⱥ available balance.
                 </p>
               )}
             </div>
@@ -333,7 +330,11 @@ export function SendPanel({
             }
             className="w-full py-2.5 px-4 bg-[var(--wui-color-primary)] text-[var(--wui-color-primary-text)] font-medium rounded-xl hover:brightness-90 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {sendType === 'asa' && receiverOptInStatus === 'checking' ? 'Verifying' : isZeroBalanceOptOut ? `Opt out of ${optOutLabel}` : `Send ${sendLabel}`}
+            {sendType === 'asa' && receiverOptInStatus === 'checking'
+              ? 'Verifying'
+              : isZeroBalanceOptOut
+                ? `Opt out of ${optOutLabel}`
+                : `Send ${sendLabel}`}
           </button>
         </>
       )}
@@ -348,7 +349,10 @@ export function SendPanel({
       />
 
       {status === 'success' && (
-        <button onClick={onBack} className="mt-3 w-full py-2.5 px-4 bg-[var(--wui-color-primary)] text-[var(--wui-color-primary-text)] font-medium rounded-xl hover:brightness-90 transition-all text-sm">
+        <button
+          onClick={onBack}
+          className="mt-3 w-full py-2.5 px-4 bg-[var(--wui-color-primary)] text-[var(--wui-color-primary-text)] font-medium rounded-xl hover:brightness-90 transition-all text-sm"
+        >
           Back
         </button>
       )}

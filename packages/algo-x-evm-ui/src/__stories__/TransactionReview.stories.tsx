@@ -8,7 +8,7 @@ const meta: Meta<typeof TransactionReview> = {
   title: 'TransactionReview',
   component: TransactionReview,
   args: {
-    message: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567ABCDEFGHIJKLMNOPQ=',
+    message: '0xa1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2',
     dangerous: false,
     onApprove: () => console.log('approved'),
     onReject: () => console.log('rejected'),
@@ -83,6 +83,13 @@ export const MixedGroup: Story = {
   },
 }
 
+export const LargePaymentGroup: Story = {
+  args: {
+    transactions: mocks.largePaymentGroup(),
+    genesisHash: TESTNET_GENESIS_HASH,
+  },
+}
+
 export const Signing: Story = {
   args: {
     transactions: mocks.singlePayment(),
@@ -104,6 +111,30 @@ export const PayloadVerificationFailed: Story = {
   args: {
     transactions: mocks.singlePayment(),
     payloadVerified: false,
+    genesisHash: TESTNET_GENESIS_HASH,
+  },
+}
+
+export const MaxSizeNote: Story = {
+  args: {
+    transactions: [
+      {
+        ...mocks.singlePayment()[0],
+        note: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris. Integer in mauris eu nibh euismod gravida. Duis ac tellus et risus vulputate vehicula. Donec lobortis risus a elit. Etiam tempor. Ut ullamcorper, ligula ut dictum pharetra, nisi nunc fringilla magna, in commodo elit erat nec turpis. Ut pharetra augue nec augue. Nam elit magna, hendrerit sit amet, tincidunt ac, viverra sed nulla. Donec porta diam eu massa. Quisque diam lorem, interdum vitae, dui sed ab.',
+      },
+    ],
+    genesisHash: TESTNET_GENESIS_HASH,
+  },
+}
+
+export const BinaryNote: Story = {
+  args: {
+    transactions: [
+      {
+        ...mocks.singlePayment()[0],
+        note: 'iKNyY3bEIJkCMheVHx4CK7J07fHsot/kSi0x4Ht1sNuH+bh8a6OQo2FtdM0Bo3NuZMQg',
+      },
+    ],
     genesisHash: TESTNET_GENESIS_HASH,
   },
 }

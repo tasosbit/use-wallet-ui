@@ -1,6 +1,5 @@
 import type { TransactionData, AssetInfo } from '../types'
 import { formatAssetAmount, assetLabel } from '../formatters'
-import { ChevronRight } from './icons'
 
 const ARROW = <span className="text-[var(--wui-color-text-secondary)] px-2">&rarr;</span>
 const DASH = <span className="text-[var(--wui-color-text-secondary)] px-2">&mdash;</span>
@@ -10,24 +9,18 @@ export interface TransactionFlowProps {
   txn: TransactionData
   assetInfo?: AssetInfo
   appEscrows?: Record<string, string>
-  onExpand?: () => void
 }
 
-export function TransactionFlow({ txn, assetInfo, appEscrows = EMPTY_ESCROWS, onExpand }: TransactionFlowProps) {
-  const resolveAddr = (full: string | undefined, short: string): string =>
-    (full && appEscrows[full]) || short
+export function TransactionFlow({ txn, assetInfo, appEscrows = EMPTY_ESCROWS }: TransactionFlowProps) {
+  const resolveAddr = (full: string | undefined, short: string): string => (full && appEscrows[full]) || short
 
   const isOptIn =
-    txn.type === 'axfer' &&
-    txn.sender === txn.receiver &&
-    (txn.rawAmount === 0n || txn.rawAmount === '0' || txn.rawAmount === undefined)
+    txn.type === 'axfer' && txn.sender === txn.receiver && (txn.rawAmount === 0n || txn.rawAmount === '0' || txn.rawAmount === undefined)
 
   const amountDisplay = (): string => {
     if (txn.type === 'pay') return txn.amount || '0 ALGO'
     if (txn.type === 'axfer') {
-      return assetInfo
-        ? formatAssetAmount(txn.rawAmount, assetInfo)
-        : `${txn.amount || '0'} ${assetLabel(txn)}`
+      return assetInfo ? formatAssetAmount(txn.rawAmount, assetInfo) : `${txn.amount || '0'} ${assetLabel(txn)}`
     }
     return ''
   }
@@ -37,18 +30,21 @@ export function TransactionFlow({ txn, assetInfo, appEscrows = EMPTY_ESCROWS, on
 
   /** Summary line per transaction type */
   const renderSummary = () => {
-    const fiveCol = 'grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center text-xs'
-    const threeCol = 'grid grid-cols-[1fr_auto_auto] items-center text-xs'
+    const fiveCol = 'w-full grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center text-xs'
+    const threeCol = 'w-full grid grid-cols-[auto_auto_auto] items-center text-xs'
 
     switch (txn.type) {
       case 'pay':
         return (
-          <div className={fiveCol}>
+          // TODO straight line on the left side, arrow on the right. make them match visually, tighten spacing
+          <div className={threeCol}>
             <span className="text-[var(--wui-color-text-secondary)] truncate">{txn.senderShort}</span>
-            {ARROW}
-            <span className="text-[var(--wui-color-primary)] font-medium whitespace-nowrap text-center">{amountDisplay()}</span>
-            {ARROW}
-            <span className="text-[var(--wui-color-text-secondary)] truncate text-right">{resolveAddr(txn.receiver, txn.receiverShort!)}</span>
+            <span className="text-[var(--wui-color-primary)] font-medium whitespace-nowrap text-center">
+              {DASH} {amountDisplay()} {ARROW}
+            </span>
+            <span className="text-[var(--wui-color-text-secondary)] truncate text-right">
+              {resolveAddr(txn.receiver, txn.receiverShort!)}
+            </span>
           </div>
         )
 
@@ -58,9 +54,7 @@ export function TransactionFlow({ txn, assetInfo, appEscrows = EMPTY_ESCROWS, on
             <div className={threeCol}>
               <span className="text-[var(--wui-color-text-secondary)] truncate">{txn.senderShort}</span>
               {DASH}
-              <span className="text-[var(--wui-color-primary)] font-medium whitespace-nowrap">
-                Opt In {assetLabel(txn, assetInfo)}
-              </span>
+              <span className="text-[var(--wui-color-primary)] font-medium whitespace-nowrap">Opt In {assetLabel(txn, assetInfo)}</span>
             </div>
           )
         }
@@ -70,7 +64,9 @@ export function TransactionFlow({ txn, assetInfo, appEscrows = EMPTY_ESCROWS, on
             {ARROW}
             <span className="text-[var(--wui-color-primary)] font-medium whitespace-nowrap text-center">{amountDisplay()}</span>
             {ARROW}
-            <span className="text-[var(--wui-color-text-secondary)] truncate text-right">{resolveAddr(txn.receiver, txn.receiverShort!)}</span>
+            <span className="text-[var(--wui-color-text-secondary)] truncate text-right">
+              {resolveAddr(txn.receiver, txn.receiverShort!)}
+            </span>
           </div>
         )
 
@@ -146,9 +142,7 @@ export function TransactionFlow({ txn, assetInfo, appEscrows = EMPTY_ESCROWS, on
         {hasClose && (
           <div className="flex items-center gap-1.5 text-xs rounded-lg px-2 py-1 bg-[var(--wui-color-danger-bg)]">
             <span className="text-[var(--wui-color-danger-text)] font-bold">CLOSE</span>
-            <span className="text-[var(--wui-color-danger-text)]">
-              Remainder &rarr; {txn.closeRemainderToShort}
-            </span>
+            <span className="text-[var(--wui-color-danger-text)]">Balance Remainder &rarr; {txn.closeRemainderToShort}</span>
           </div>
         )}
       </div>
@@ -157,20 +151,8 @@ export function TransactionFlow({ txn, assetInfo, appEscrows = EMPTY_ESCROWS, on
 
   return (
     <div>
-      {/* Summary row + expand toggle */}
-      <div className="flex items-center gap-2">
-        <div className="flex-1 min-w-0">{renderSummary()}</div>
-        {onExpand && (
-          <button
-            type="button"
-            onClick={onExpand}
-            className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-[var(--wui-color-bg-tertiary)] transition-colors text-[var(--wui-color-text-secondary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--wui-color-primary)] focus-visible:ring-offset-1"
-            aria-label="Show details"
-          >
-            <ChevronRight size={14} />
-          </button>
-        )}
-      </div>
+      {/* Summary row */}
+      <div className="flex items-center">{renderSummary()}</div>
 
       {/* Note */}
       {txn.note && (

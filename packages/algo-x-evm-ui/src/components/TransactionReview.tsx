@@ -1,6 +1,7 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { TransactionFlow } from './TransactionFlow'
 import { TransactionDetail } from './TransactionDetail'
+import { ChevronRight } from './icons'
 import { Spinner } from './Spinner'
 import { useTransactionData } from '../hooks/useTransactionData'
 import type { TransactionData, TransactionDanger, AssetLookupClient } from '../types'
@@ -79,6 +80,13 @@ export function TransactionReview({
   /** Index into transactions array for detail view, or null for list view */
   const [detailIndex, setDetailIndex] = useState<number | null>(null)
 
+  // Animate on mount and when returning from detail view
+  const [entered, setEntered] = useState(false)
+  useEffect(() => {
+    setEntered(false)
+    requestAnimationFrame(() => setEntered(true))
+  }, [detailIndex])
+
   const networkName = resolveNetworkName(genesisHash, genesisID)
   const unknownNetwork = genesisHash != null && !networkName
 
@@ -100,7 +108,10 @@ export function TransactionReview({
 
   // List view — default
   return (
-    <div className="flex flex-col">
+    <div
+      data-state={entered ? 'entered' : 'starting'}
+      className="flex flex-col transition-all duration-150 ease-in-out data-[state=starting]:opacity-0 data-[state=entered]:opacity-100"
+    >
       {/* Header */}
       <div className="flex items-center justify-between px-6 pt-5 pb-1">
         <h2 className={`text-lg font-bold ${dangerous ? 'text-[var(--wui-color-danger-text)]' : 'text-[var(--wui-color-text)]'}`}>
@@ -157,17 +168,24 @@ export function TransactionReview({
         ) : (
           <div className="space-y-2">
             {transactions.map((txn, i) => (
-              <div
+              <button
                 key={txn.index}
-                className="rounded-xl border p-3 border-[var(--wui-color-primary)] bg-[var(--wui-color-bg-secondary)]"
+                type="button"
+                onClick={() => setDetailIndex(i)}
+                className="flex w-full text-left rounded-xl border border-[var(--wui-color-primary)] bg-[var(--wui-color-bg-secondary)] cursor-pointer hover:bg-[var(--wui-color-bg-tertiary)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--wui-color-primary)] focus-visible:ring-offset-1"
+                aria-label={`View details for transaction ${i + 1}`}
               >
-                <TransactionFlow
-                  txn={txn}
-                  assetInfo={txn.assetIndex ? assets[txn.assetIndex.toString()] : undefined}
-                  appEscrows={appEscrows}
-                  onExpand={() => setDetailIndex(i)}
-                />
-              </div>
+                <div className="flex-1 min-w-0 p-3">
+                  <TransactionFlow
+                    txn={txn}
+                    assetInfo={txn.assetIndex ? assets[txn.assetIndex.toString()] : undefined}
+                    appEscrows={appEscrows}
+                  />
+                </div>
+                <div className="shrink-0 self-stretch flex items-center justify-center w-3.5 rounded-r-xl bg-[var(--wui-color-primary)] text-[var(--wui-color-primary-text)]">
+                  <ChevronRight size={10} />
+                </div>
+              </button>
             ))}
           </div>
         )}

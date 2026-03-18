@@ -1,7 +1,16 @@
+import { useEffect, useState } from 'react'
 import type { TransactionData, AssetInfo } from '../types'
 import { formatAssetAmount, assetLabel } from '../formatters'
 import { BackButton } from './BackButton'
 import { ChevronLeft, ChevronRight } from './icons'
+
+function formatFee(fee: number | string | undefined): string | undefined {
+  if (fee === undefined) return undefined
+  const microAlgo = typeof fee === 'string' ? parseFloat(fee) : fee
+  if (microAlgo === 0) return '0 ALGO'
+  const algo = microAlgo / 1_000_000
+  return `${algo} ALGO`
+}
 
 export interface TransactionDetailProps {
   txn: TransactionData
@@ -25,6 +34,17 @@ export function TransactionDetail({
 }: TransactionDetailProps) {
   const hasPrev = position > 1
   const hasNext = position < groupSize
+
+  const [animState, setAnimState] = useState<'starting' | 'entered' | 'exiting'>('starting')
+  useEffect(() => {
+    setAnimState('starting')
+    requestAnimationFrame(() => setAnimState('entered'))
+  }, [position])
+
+  const handleBack = () => {
+    setAnimState('exiting')
+    setTimeout(onBack, 150)
+  }
 
   const amountDisplay = (): string | undefined => {
     if (txn.type === 'pay') return txn.amount || '0 ALGO'
@@ -81,23 +101,27 @@ export function TransactionDetail({
     ['Clawback', txn.assetClawback],
     ['Asset URL', txn.assetURL],
     // Common
-    ['Fee', txn.fee],
+    ['Fee', formatFee(txn.fee)],
+    ['Group', txn.group],
+    ['Lease', txn.lease],
+    ['Note', txn.note],
+    // Validity / network (least important, shown last)
     ['First Valid', txn.firstValid],
     ['Last Valid', txn.lastValid],
     ['Genesis ID', txn.genesisID],
     ['Genesis Hash', txn.genesisHash],
-    ['Group', txn.group],
-    ['Lease', txn.lease],
-    ['Note', txn.note],
   ]
 
   const visibleDetails = detailRows.filter(([, v]) => v !== undefined && v !== '' && v !== 0)
 
   return (
-    <div className="flex flex-col">
+    <div
+      data-state={animState}
+      className="flex flex-col transition-all duration-150 ease-in-out data-[state=starting]:opacity-0 data-[state=starting]:translate-x-2 data-[state=exiting]:opacity-0 data-[state=exiting]:translate-x-2 data-[state=entered]:opacity-100 data-[state=entered]:translate-x-0"
+    >
       {/* Header with back button */}
       <div className="flex items-center gap-3 px-6 pt-5 pb-3">
-        <BackButton onClick={onBack} variant="round" aria-label="Back to transactions" />
+        <BackButton onClick={handleBack} variant="round" aria-label="Back to transactions" />
         <h2 className="text-lg font-bold text-[var(--wui-color-text)]">
           Transaction Details
         </h2>

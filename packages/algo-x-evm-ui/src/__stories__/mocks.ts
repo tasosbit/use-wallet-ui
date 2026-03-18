@@ -181,6 +181,24 @@ export function keyRegistration(): TransactionData[] {
   ]
 }
 
+export function largePaymentGroup(): TransactionData[] {
+  const group = 'bGFyZ2VncnAxNnBheW1lbnRzYmFzZTY0'
+  return Array.from({ length: 16 }, (_, i) => ({
+    index: i,
+    type: 'pay' as const,
+    typeLabel: 'Payment',
+    sender: ADDR_ALICE,
+    senderShort: SHORT_ALICE,
+    receiver: ADDR_BOB,
+    receiverShort: SHORT_BOB,
+    amount: `${(i + 1) * 0.5} ALGO`,
+    rawAmount: String((i + 1) * 500_000),
+    note: `Payment ${i + 1} of 16 — batch transfer`,
+    group,
+    ...commonFields,
+  }))
+}
+
 export function mixedGroup(): TransactionData[] {
   const group = 'bWl4ZWRncm91cGlkYmFzZTY0ZW5jb2Rl'
   return [

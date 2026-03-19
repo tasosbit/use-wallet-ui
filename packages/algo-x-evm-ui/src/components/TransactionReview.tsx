@@ -172,7 +172,7 @@ export function TransactionReview({
                 key={txn.index}
                 type="button"
                 onClick={() => setDetailIndex(i)}
-                className="flex w-full text-left rounded-xl border border-[var(--wui-color-primary)] bg-[var(--wui-color-bg-secondary)] cursor-pointer hover:bg-[var(--wui-color-bg-tertiary)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--wui-color-primary)] focus-visible:ring-offset-1"
+                className="group flex w-full text-left rounded-xl border border-[var(--wui-color-primary)] bg-[var(--wui-color-bg-secondary)] cursor-pointer hover:bg-[var(--wui-color-bg-tertiary)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--wui-color-primary)] focus-visible:ring-offset-1"
                 aria-label={`View details for transaction ${i + 1}`}
               >
                 <div className="flex-1 min-w-0 p-3">
@@ -182,7 +182,7 @@ export function TransactionReview({
                     appEscrows={appEscrows}
                   />
                 </div>
-                <div className="shrink-0 self-stretch flex items-center justify-center w-3.5 rounded-r-xl bg-[var(--wui-color-primary)] text-[var(--wui-color-primary-text)]">
+                <div className="shrink-0 self-stretch flex items-center justify-center w-3.5 m-[3px] bg-[var(--wui-color-bg-tertiary)] text-[var(--wui-color-primary)] rounded-l-[2px] rounded-r-[calc(var(--radius-xl)-3px)] transition-all group-hover:bg-[var(--wui-color-primary)] group-hover:text-[var(--wui-color-primary-text)]">
                   <ChevronRight size={10} />
                 </div>
               </button>

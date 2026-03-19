@@ -14,6 +14,7 @@ export function formatAssetAmount(rawAmount: bigint | string | undefined, info: 
 
 export function assetLabel(txn: TransactionData, info?: AssetInfo): string {
   if (info?.unitName) return info.unitName
+  if (info?.name) return info.name
   if (!txn.assetIndex) return 'ASA'
-  return `ASA#${txn.assetIndex}`
+  return `#${txn.assetIndex}`
 }

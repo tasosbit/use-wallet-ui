@@ -137,18 +137,6 @@ function injectThemeStyles() {
         ${darkThemeVars}
       }
     }
-
-    /* Reset global button styles that may leak from the consuming app */
-    [data-wallet-ui] button {
-      border: none;
-      border-radius: unset;
-      padding: 0;
-      margin: 0;
-      background: none;
-      font: inherit;
-      color: inherit;
-      cursor: pointer;
-    }
   `
   // Insert at the START of <head> so consumer CSS (loaded later) can override
   document.head.insertBefore(styleElement, document.head.firstChild)

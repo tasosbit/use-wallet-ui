@@ -3,7 +3,7 @@ import { AddToWalletPanel, type AddToWalletPanelProps } from './AddToWalletPanel
 import { AlgoSymbol } from './AlgoSymbol'
 import { BackButton } from './BackButton'
 import { BridgePanel, type BridgePanelProps } from './BridgePanel'
-import { ArrowDownLeft, ArrowUpRight, ArrowsExchange, Check, ChevronsUpDown, Clipboard, RefreshCw, Search, VerifiedBadge, SuspiciousBadge } from './icons'
+import { ArrowDownLeft, ArrowUpRight, ArrowsExchange, Check, ChevronsUpDown, Clipboard, List, RefreshCw, Search, VerifiedBadge, SuspiciousBadge } from './icons'
 import { ReceivePanel, type ReceivePanelProps } from './ReceivePanel'
 import { SendPanel, type SendPanelProps } from './SendPanel'
 
@@ -516,6 +516,7 @@ export function ManagePanel({
           <div className="shrink-0" style={{ width: '180px' }}>
             <div className="flex flex-col gap-2">
               <button onClick={() => { setAnimDir('none'); setMode('main') }} className={sideActionBtnClass('main')}>
+                <List className="h-4 w-4 mr-1.5" />
                 Overview
               </button>
               <button onClick={() => goForward('send')} disabled={!send} className={sideActionBtnClass('send')}>

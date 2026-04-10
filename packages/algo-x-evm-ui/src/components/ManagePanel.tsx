@@ -384,10 +384,10 @@ export function ManagePanel({
       {addToWallet && (
         <button
           onClick={() => goForward('add-to-wallet')}
-          className={`${vertical ? '' : 'col-span-2 '}${actionBtnClass}`}
+          className={actionBtnClass}
         >
-          <img src={addToWallet.walletIcon} alt={`${addToWallet.walletName} icon`} width={16} height={16} className="mr-1.5 object-contain" />
-          Add to {addToWallet.walletName}
+          <img src={addToWallet.walletIcon} alt={`${addToWallet.walletName} icon`} width={16} height={16} className="mr-1.5 object-contain shrink-0" />
+          <span className="truncate">Add to {addToWallet.walletName}</span>
         </button>
       )}
     </div>

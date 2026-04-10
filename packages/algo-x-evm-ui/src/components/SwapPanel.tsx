@@ -1,4 +1,6 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import type { CachedAsset } from '../cache/assetCache'
+import type { PeraAssetData } from '../services/peraApi'
 import { AlgoSymbol } from './AlgoSymbol'
 import { AssetSelect } from './AssetSelect'
 import { BackButton } from './BackButton'
@@ -6,8 +8,9 @@ import { SecondaryButton } from './SecondaryButton'
 import type { AssetHoldingDisplay } from './ManagePanel'
 import { Spinner } from './Spinner'
 import { TransactionStatus } from './TransactionStatus'
-import type { SwapStatusValue } from '../hooks/useSwapPanel'
-import { ArrowsUpDown } from './icons'
+import type { AssetLookupInfo } from '../hooks/useAssetLookup'
+import type { SwapAsset, SwapStatusValue } from '../hooks/useSwapPanel'
+import { ArrowsUpDown, Search, SuspiciousBadge, VerifiedBadge } from './icons'
 import type { SwapQuoteDisplay } from '../hooks/useSwapPanel'
 
 export interface SwapPanelProps {
@@ -35,6 +38,23 @@ export interface SwapPanelProps {
   reset: () => void
   retry: () => void
   onBack: () => void
+  // Asset search (optional, for swapping into assets the wallet doesn't hold)
+  searchInput?: string
+  setSearchInput?: (v: string) => void
+  searchLookupInfo?: AssetLookupInfo | null
+  searchLookupLoading?: boolean
+  searchLookupError?: string | null
+  searchNameResults?: CachedAsset[]
+  searchNameLoading?: boolean
+  registryLoading?: boolean
+  isNameMode?: boolean
+  discoveredAssets?: SwapAsset[]
+  pickDiscoveredAsset?: (asset: SwapAsset) => void
+  clearSearch?: () => void
+  /** Pera asset data map for logos and verification tiers */
+  peraData?: Map<number, PeraAssetData>
+  /** Callback to fetch Pera data for a batch of asset IDs (e.g. search results) */
+  fetchPeraData?: (assetIds: number[]) => void
 }
 
 function formatOutputAmount(quote: SwapQuoteDisplay, decimals: number): string {
@@ -68,10 +88,44 @@ export function SwapPanel({
   reset: _reset,
   retry,
   onBack,
+  searchInput,
+  setSearchInput,
+  searchLookupInfo,
+  searchLookupLoading,
+  searchLookupError,
+  searchNameResults,
+  searchNameLoading,
+  registryLoading,
+  isNameMode,
+  discoveredAssets,
+  pickDiscoveredAsset,
+  clearSearch,
+  peraData,
+  fetchPeraData,
 }: SwapPanelProps) {
-  const algoIcon = <AlgoSymbol scale={1} />
+  // Fetch Pera data for search results as they appear
+  useEffect(() => {
+    if (!fetchPeraData || !searchNameResults || searchNameResults.length === 0) return
+    const ids = searchNameResults.map((a) => a.index).filter((id) => !peraData?.has(id))
+    if (ids.length > 0) fetchPeraData(ids)
+  }, [searchNameResults, fetchPeraData, peraData])
 
-  const assetOptions = useMemo(() => {
+  // Fetch Pera data for ID-mode lookup result
+  useEffect(() => {
+    if (!fetchPeraData || !searchLookupInfo || peraData?.has(searchLookupInfo.index)) return
+    fetchPeraData([searchLookupInfo.index])
+  }, [searchLookupInfo, fetchPeraData, peraData])
+
+  const algoIcon = <AlgoSymbol scale={1} />
+  const [searchOpen, setSearchOpen] = useState(false)
+  const searchEnabled = !!setSearchInput && !!pickDiscoveredAsset
+
+  const handlePickAsset = (asset: SwapAsset) => {
+    pickDiscoveredAsset?.(asset)
+    setSearchOpen(false)
+  }
+
+  const fromOptions = useMemo(() => {
     const opts: { value: string; label: string; logo?: string | null; icon?: React.ReactNode; verificationTier?: AssetHoldingDisplay['verificationTier'] }[] = [
       { value: '0', label: 'ALGO', icon: algoIcon },
     ]
@@ -88,13 +142,33 @@ export function SwapPanel({
     return opts
   }, [accountAssets])
 
+  // "To" options include held assets + discovered assets (from search)
+  const toOptions = useMemo(() => {
+    const opts = [...fromOptions]
+    if (discoveredAssets) {
+      for (const a of discoveredAssets) {
+        if (opts.some((o) => o.value === String(a.assetId))) continue
+        opts.push({
+          value: String(a.assetId),
+          label: a.unitName || a.name,
+          logo: a.logo,
+          verificationTier: a.verificationTier,
+        })
+      }
+    }
+    return opts
+  }, [fromOptions, discoveredAssets])
+
+  const assetOptions = fromOptions
+
   const fromAsset = fromAssetId === '0'
     ? { unitName: 'ALGO', decimals: 6 }
     : accountAssets?.find((a) => String(a.assetId) === fromAssetId)
 
   const toAsset = toAssetId === '0'
     ? { unitName: 'ALGO', decimals: 6 }
-    : accountAssets?.find((a) => String(a.assetId) === toAssetId)
+    : (accountAssets?.find((a) => String(a.assetId) === toAssetId)
+        ?? discoveredAssets?.find((a) => String(a.assetId) === toAssetId))
 
   const fromLabel = fromAsset && 'unitName' in fromAsset ? fromAsset.unitName : 'Asset'
   const toLabel = toAsset && 'unitName' in toAsset ? toAsset.unitName : 'Asset'
@@ -226,16 +300,32 @@ export function SwapPanel({
             <button
               type="button"
               onClick={swapDirection}
-              className="p-1.5 rounded-lg border border-[var(--wui-color-border)] bg-[var(--wui-color-bg-secondary)] hover:bg-[var(--wui-color-bg-tertiary)] transition-colors text-[var(--wui-color-text-secondary)]"
+              style={{ width: 32, height: 32, padding: 0, lineHeight: 0 }}
+              className="shrink-0 inline-flex items-center justify-center rounded-full border border-[var(--wui-color-border)] bg-[var(--wui-color-bg-secondary)] hover:bg-[var(--wui-color-bg-tertiary)] transition-colors text-[var(--wui-color-text-secondary)]"
               title="Swap direction"
             >
-              <ArrowsUpDown size={16} />
+              <ArrowsUpDown size={14} />
             </button>
           </div>
 
           {/* You receive */}
           <div className="mb-3">
-            <label className="block text-xs font-medium text-[var(--wui-color-text-secondary)] mb-1">You receive</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-medium text-[var(--wui-color-text-secondary)]">You receive</label>
+              {searchEnabled && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchOpen((v) => !v)
+                    if (searchOpen) clearSearch?.()
+                  }}
+                  className="flex items-center gap-1 text-xs text-[var(--wui-color-primary)] hover:brightness-90 transition-all"
+                >
+                  <Search size={12} />
+                  {searchOpen ? 'Cancel' : 'Find asset'}
+                </button>
+              )}
+            </div>
             <div className="flex gap-2">
               <div className="flex-1 min-w-0">
                 <div className="w-full rounded-lg border border-[var(--wui-color-border)] bg-[var(--wui-color-bg-secondary)] py-2.5 px-3 text-sm text-[var(--wui-color-text)] min-h-[40px] flex items-center">
@@ -252,10 +342,137 @@ export function SwapPanel({
                 value={toAssetId}
                 onChange={handleToChange}
                 className="w-[140px] shrink-0"
-                options={assetOptions}
+                options={toOptions}
               />
             </div>
           </div>
+
+          {/* Asset search (expandable) */}
+          {searchEnabled && searchOpen && (
+            <div className="mb-3 rounded-lg border border-[var(--wui-color-border)] bg-[var(--wui-color-bg-secondary)] p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <input
+                  type="text"
+                  placeholder="Search by name or asset ID"
+                  value={searchInput ?? ''}
+                  onChange={(e) => setSearchInput?.(e.target.value)}
+                  autoFocus
+                  className="flex-1 rounded-lg border border-[var(--wui-color-border)] bg-[var(--wui-color-bg)] py-2 px-3 text-sm text-[var(--wui-color-text)] placeholder:text-[var(--wui-color-text-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--wui-color-primary)] focus:border-transparent"
+                />
+                {registryLoading && <Spinner className="h-3 w-3 text-[var(--wui-color-text-secondary)]" />}
+              </div>
+
+              {/* ID lookup loading */}
+              {!isNameMode && searchLookupLoading && (
+                <div className="flex items-center justify-center py-3 text-xs text-[var(--wui-color-text-secondary)]">
+                  <Spinner className="h-3 w-3 mr-2" />
+                  Looking up asset
+                </div>
+              )}
+
+              {/* ID lookup error */}
+              {!isNameMode && searchLookupError && (
+                <p className="py-2 text-center text-xs text-[var(--wui-color-danger-text)] break-words">{searchLookupError}</p>
+              )}
+
+              {/* ID lookup result */}
+              {!isNameMode && searchLookupInfo && (() => {
+                const pera = peraData?.get(searchLookupInfo.index)
+                const tier = pera?.verificationTier
+                return (
+                  <button
+                    type="button"
+                    onClick={() => handlePickAsset({
+                      assetId: searchLookupInfo.index,
+                      name: searchLookupInfo.name,
+                      unitName: searchLookupInfo.unitName,
+                      decimals: searchLookupInfo.decimals,
+                      logo: pera?.logo,
+                      verificationTier: tier,
+                    })}
+                    className="w-full flex items-center justify-between rounded-lg bg-[var(--wui-color-bg)] hover:bg-[var(--wui-color-bg-tertiary)] transition-colors p-2.5 text-left"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      {pera?.logo ? (
+                        <img src={pera.logo} alt={searchLookupInfo.name} width={24} height={24} className="rounded-full shrink-0 object-cover" loading="lazy" />
+                      ) : (
+                        <span className="w-6 h-6 rounded-full bg-[var(--wui-color-bg-tertiary)] shrink-0 flex items-center justify-center text-[10px] font-medium text-[var(--wui-color-text-secondary)]">
+                          {(searchLookupInfo.unitName || searchLookupInfo.name || '?').charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-[var(--wui-color-text)] truncate flex items-center gap-1">
+                          {searchLookupInfo.name}
+                          {(tier === 'verified' || tier === 'trusted') && <VerifiedBadge size={11} />}
+                          {tier === 'suspicious' && <SuspiciousBadge size={11} />}
+                        </p>
+                        {searchLookupInfo.unitName && <p className="text-xs text-[var(--wui-color-text-secondary)] truncate">{searchLookupInfo.unitName}</p>}
+                      </div>
+                    </div>
+                    <span className="text-xs text-[var(--wui-color-text-secondary)] shrink-0 ml-2">ID: {searchLookupInfo.index}</span>
+                  </button>
+                )
+              })()}
+
+              {/* Name search loading */}
+              {isNameMode && searchNameLoading && (
+                <div className="flex items-center justify-center py-3 text-xs text-[var(--wui-color-text-secondary)]">
+                  <Spinner className="h-3 w-3 mr-2" />
+                  Searching
+                </div>
+              )}
+
+              {/* Name search results */}
+              {isNameMode && !searchNameLoading && searchNameResults && searchNameResults.length > 0 && (
+                <div className="max-h-[180px] overflow-y-auto rounded-lg border border-[var(--wui-color-border)] bg-[var(--wui-color-bg)]">
+                  {searchNameResults.map((asset) => {
+                    const pera = peraData?.get(asset.index)
+                    const tier = pera?.verificationTier
+                    return (
+                      <button
+                        key={asset.index}
+                        type="button"
+                        onClick={() => handlePickAsset({
+                          assetId: asset.index,
+                          name: asset.name,
+                          unitName: asset.unitName,
+                          decimals: asset.decimals,
+                          logo: pera?.logo,
+                          verificationTier: tier,
+                        })}
+                        className="w-full flex items-center justify-between p-2 text-left hover:bg-[var(--wui-color-bg-secondary)] transition-colors border-b border-[var(--wui-color-border)] last:border-b-0"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          {pera?.logo ? (
+                            <img src={pera.logo} alt={asset.name} width={24} height={24} className="rounded-full shrink-0 object-cover" loading="lazy" />
+                          ) : (
+                            <span className="w-6 h-6 rounded-full bg-[var(--wui-color-bg-tertiary)] shrink-0 flex items-center justify-center text-[10px] font-medium text-[var(--wui-color-text-secondary)]">
+                              {(asset.unitName || asset.name || '?').charAt(0).toUpperCase()}
+                            </span>
+                          )}
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-[var(--wui-color-text)] truncate flex items-center gap-1">
+                              {asset.name}
+                              {(tier === 'verified' || tier === 'trusted') && <VerifiedBadge size={11} />}
+                              {tier === 'suspicious' && <SuspiciousBadge size={11} />}
+                              {!tier && asset.peraVerified && <VerifiedBadge size={11} />}
+                            </p>
+                            {asset.unitName && <p className="text-xs text-[var(--wui-color-text-secondary)] truncate">{asset.unitName}</p>}
+                          </div>
+                        </div>
+                        <span className="text-xs text-[var(--wui-color-text-secondary)] shrink-0 ml-2">ID: {asset.index}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* No results */}
+              {isNameMode && !searchNameLoading && searchNameResults && searchNameResults.length === 0 && searchInput && searchInput.trim().length > 0 && (
+                <p className="py-2 text-center text-xs text-[var(--wui-color-text-secondary)]">No assets found</p>
+              )}
+            </div>
+          )}
 
           {/* Quote error */}
           {quoteError && <p className="mb-3 text-xs text-[var(--wui-color-danger-text)] break-words">{quoteError}</p>}

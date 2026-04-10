@@ -17,7 +17,7 @@ import { QueryClientProvider, useIsFetching, useQueryClient } from '@tanstack/re
 import { ALGORAND_EVM_CHAIN_CONFIG } from 'algo-x-evm-sdk'
 import React, { ReactElement, RefObject, useState } from 'react'
 
-import { ManagePanel, useAssets, type AssetHoldingDisplay } from '@d13co/algo-x-evm-ui'
+import { ManagePanel, useAssets, usePeraAssetData, type AssetHoldingDisplay } from '@d13co/algo-x-evm-ui'
 
 import { useAccountInfo } from '../hooks/useAccountInfo'
 import { useAssetRegistry } from '../hooks/useAssetRegistry'
@@ -41,7 +41,7 @@ export interface ConnectedWalletMenuProps {
 }
 
 function ConnectedWalletMenuContent({ children, swap: swapOptions }: ConnectedWalletMenuProps) {
-  const { activeAddress, activeWallet, algodClient } = useWallet()
+  const { activeAddress, activeWallet, activeWalletAccounts, algodClient } = useWallet()
   const { theme } = useWalletUI()
   const rqClient = useQueryClient()
   const isFetching = useIsFetching()
@@ -103,6 +103,9 @@ function ConnectedWalletMenuContent({ children, swap: swapOptions }: ConnectedWa
 
   const { assets: assetInfoMap } = useAssets(assetIds, algodClient as any, activeNetwork)
 
+  const heldAssetIds = React.useMemo(() => allHoldings.map((a) => Number(a.assetId)), [allHoldings])
+  const { peraData, fetchFor: fetchPeraFor } = usePeraAssetData(heldAssetIds, activeNetwork)
+
   const assetHoldings = React.useMemo((): AssetHoldingDisplay[] => {
     return allHoldings
       .map((holding) => {
@@ -123,16 +126,20 @@ function ConnectedWalletMenuContent({ children, swap: swapOptions }: ConnectedWa
             amount = `${whole}.${frac}`
           }
         }
-        return {
+        const pera = peraData.get(Number(holding.assetId))
+        const result: AssetHoldingDisplay = {
           assetId: Number(holding.assetId),
           name: info.name || `ASA#${holding.assetId}`,
           unitName: info.unitName,
           amount,
           decimals: info.decimals,
+          logo: pera?.logo,
+          verificationTier: pera?.verificationTier,
         }
+        return result
       })
       .filter((a): a is AssetHoldingDisplay => a !== null)
-  }, [allHoldings, assetInfoMap])
+  }, [allHoldings, assetInfoMap, peraData])
 
   const { refs, floatingStyles, context } = useFloating({
     open: isOpen,
@@ -278,8 +285,8 @@ function ConnectedWalletMenuContent({ children, swap: swapOptions }: ConnectedWa
                     showAvailableBalance={showAvailableBalance}
                     onToggleBalance={toggleBalanceView}
                     send={{ ...send, explorerUrl: getTxExplorerUrl(send.txId) }}
-                    optIn={{ ...optIn, evmAddress, explorerUrl: getTxExplorerUrl(optIn.txId) }}
-                    swap={swapOptions ? { ...swapState, accountAssets: assetHoldings.length > 0 ? assetHoldings : undefined, totalBalance, availableBalance, explorerUrl: getTxExplorerUrl(swapState.txId) } : undefined}
+                    optIn={{ ...optIn, evmAddress, explorerUrl: getTxExplorerUrl(optIn.txId), peraData, fetchPeraData: fetchPeraFor }}
+                    swap={swapOptions ? { ...swapState, accountAssets: assetHoldings.length > 0 ? assetHoldings : undefined, totalBalance, availableBalance, explorerUrl: getTxExplorerUrl(swapState.txId), peraData, fetchPeraData: fetchPeraFor } : undefined}
                     onBridgeClick={bridge.isAvailable ? openBridge : undefined}
                     assets={assetHoldings.length > 0 ? assetHoldings : undefined}
                     totalBalance={totalBalance}
@@ -292,6 +299,12 @@ function ConnectedWalletMenuContent({ children, swap: swapOptions }: ConnectedWa
                     walletName={evmWalletName}
                     walletIcon={evmWalletIcon}
                     onDisconnect={handleDisconnect}
+                    accounts={activeWalletAccounts?.map((a) => ({
+                      address: a.address,
+                      displayName: a.name !== a.address ? a.name : null,
+                      icon: null,
+                    }))}
+                    onAccountSwitch={activeWallet ? (addr: string) => activeWallet.setActiveAccount(addr) : undefined}
                     addToWallet={{
                       walletName: evmWalletName,
                       walletIcon: evmWalletIcon,

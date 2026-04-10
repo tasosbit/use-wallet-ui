@@ -1,6 +1,6 @@
 import { useWallet } from '@txnlab/use-wallet-react'
 import { useQueryClient } from '@tanstack/react-query'
-import { useSwapPanel, type UseSwapPanelReturn, type UseSwapPanelOptions, type SwapAsset } from '@d13co/algo-x-evm-ui'
+import { useSwapPanel, type UseSwapPanelReturn, type UseSwapPanelOptions, type SwapAsset, type AssetSearchProvider } from '@d13co/algo-x-evm-ui'
 import { useCallback, useMemo } from 'react'
 
 export type { UseSwapPanelReturn as UseSwapReturn } from '@d13co/algo-x-evm-ui'
@@ -16,7 +16,11 @@ export interface UseSwapOptions {
  * Convenience wrapper around `useSwapPanel` that pulls wallet context
  * from `@txnlab/use-wallet-react` and invalidates React Query on success.
  */
-export function useSwap(options: UseSwapOptions, assets?: SwapAsset[]): UseSwapPanelReturn {
+export function useSwap(
+  options: UseSwapOptions,
+  assets?: SwapAsset[],
+  searchProvider?: AssetSearchProvider,
+): UseSwapPanelReturn {
   const { activeAddress, algodClient, signTransactions } = useWallet()
   const queryClient = useQueryClient()
 
@@ -38,5 +42,6 @@ export function useSwap(options: UseSwapOptions, assets?: SwapAsset[]): UseSwapP
     },
     panelOptions,
     assets,
+    searchProvider,
   )
 }

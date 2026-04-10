@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { WalletAdapter } from '../types'
+import type { CachedAsset } from '../cache/assetCache'
+import type { AssetSearchProvider, WalletAdapter } from '../types'
+import { useAssetLookup, type AssetLookupInfo } from './useAssetLookup'
+import { useAssetNameSearch, type UseAssetNameSearchReturn } from './useAssetNameSearch'
 
 /**
  * Minimal interface for Haystack Router's SwapQuote.
@@ -53,6 +56,22 @@ export interface UseSwapPanelReturn {
   handleSwap: () => Promise<void>
   reset: () => void
   retry: () => void
+  // Asset discovery (for swapping into assets the wallet doesn't already hold)
+  searchInput: string
+  setSearchInput: (v: string) => void
+  searchLookupInfo: AssetLookupInfo | null
+  searchLookupLoading: boolean
+  searchLookupError: string | null
+  searchNameResults: CachedAsset[]
+  searchNameLoading: boolean
+  registryLoading: boolean
+  isNameMode: boolean
+  /** Assets the user has discovered via search and selected as a swap target */
+  discoveredAssets: SwapAsset[]
+  /** Pick a discovered asset (from search results) as the destination */
+  pickDiscoveredAsset: (asset: SwapAsset) => void
+  /** Clear search state */
+  clearSearch: () => void
 }
 
 export interface UseSwapPanelOptions {
@@ -63,23 +82,50 @@ export interface UseSwapPanelOptions {
     amount: bigint
     address: string
   }) => Promise<SwapQuoteDisplay>
-  /** Function to execute a swap. Consumers inject the RouterClient call. */
+  /** Function to execute a swap. Consumers inject the RouterClient call.
+   * Should call `onSigned` after the wallet has signed but before submission/confirmation,
+   * so the panel can transition the status indicator from 'signing' to 'sending'. */
   executeSwap: (params: {
     quote: SwapQuoteDisplay
     address: string
     slippage: number
+    onSigned?: () => void
   }) => Promise<{ confirmedRound: bigint; txIds: string[] }>
+}
+
+/** Mainnet USDC — used as the default destination asset. */
+const DEFAULT_TO_ASSET: SwapAsset = {
+  assetId: 31566704,
+  name: 'USDC',
+  unitName: 'USDC',
+  decimals: 6,
+}
+
+/** No-op name search used when no AssetSearchProvider is given. */
+const EMPTY_NAME_SEARCH: UseAssetNameSearchReturn = {
+  nameInput: '',
+  setNameInput: () => {},
+  results: [],
+  isSearching: false,
+  selectedAsset: null,
+  selectAsset: () => {},
+  reset: () => {},
+}
+
+function isNumericInput(input: string): boolean {
+  return /^\d*$/.test(input)
 }
 
 export function useSwapPanel(
   wallet: WalletAdapter,
   options: UseSwapPanelOptions,
   assets?: SwapAsset[],
+  searchProvider?: AssetSearchProvider,
 ): UseSwapPanelReturn {
-  const { activeAddress, onTransactionSuccess } = wallet
+  const { activeAddress, algodClient, onTransactionSuccess } = wallet
 
   const [fromAssetId, setFromAssetId] = useState('0') // ALGO
-  const [toAssetId, setToAssetId] = useState('')
+  const [toAssetId, setToAssetId] = useState(String(DEFAULT_TO_ASSET.assetId))
   const [amount, setAmount] = useState('')
   const [slippage, setSlippage] = useState('1')
   const [quote, setQuote] = useState<SwapQuoteDisplay | null>(null)
@@ -88,6 +134,46 @@ export function useSwapPanel(
   const [status, setStatus] = useState<SwapStatusValue>('idle')
   const [error, setError] = useState<string | null>(null)
   const [txId, setTxId] = useState<string | null>(null)
+
+  // Asset discovery (search by ID or name for assets the wallet doesn't hold)
+  const [searchRawInput, setSearchRawInput] = useState('')
+  // Seed with default USDC so it's selectable even when the user hasn't opted in
+  const [discoveredAssets, setDiscoveredAssets] = useState<SwapAsset[]>([DEFAULT_TO_ASSET])
+  const lookup = useAssetLookup(algodClient)
+  const nameSearchReal = useAssetNameSearch(searchProvider ?? { searchByName: async () => [], registryLoading: false })
+  const nameSearch = searchProvider ? nameSearchReal : EMPTY_NAME_SEARCH
+  const isNameMode = !isNumericInput(searchRawInput)
+
+  const setSearchInput = useCallback(
+    (value: string) => {
+      setSearchRawInput(value)
+      if (isNumericInput(value)) {
+        lookup.setAssetIdInput(value)
+        nameSearch.reset()
+      } else {
+        lookup.setAssetIdInput('')
+        nameSearch.setNameInput(value)
+      }
+    },
+    [lookup, nameSearch],
+  )
+
+  const clearSearch = useCallback(() => {
+    setSearchRawInput('')
+    lookup.reset()
+    nameSearch.reset()
+  }, [lookup, nameSearch])
+
+  const pickDiscoveredAsset = useCallback((asset: SwapAsset) => {
+    setDiscoveredAssets((prev) => {
+      if (prev.some((a) => a.assetId === asset.assetId)) return prev
+      return [...prev, asset]
+    })
+    setToAssetId(String(asset.assetId))
+    setSearchRawInput('')
+    lookup.reset()
+    nameSearch.reset()
+  }, [lookup, nameSearch])
 
   const quoteAbortRef = useRef(0)
   const fetchQuoteRef = useRef(options.fetchQuote)
@@ -98,13 +184,6 @@ export function useSwapPanel(
   assetsRef.current = assets
 
   // Set default toAssetId from available assets
-  useEffect(() => {
-    if (!toAssetId && assets && assets.length > 0) {
-      const first = assets.find((a) => String(a.assetId) !== fromAssetId)
-      if (first) setToAssetId(String(first.assetId))
-    }
-  }, [assets, toAssetId, fromAssetId])
-
   // Debounced quote fetching
   useEffect(() => {
     setQuote(null)
@@ -167,7 +246,7 @@ export function useSwapPanel(
 
   const reset = useCallback(() => {
     setFromAssetId('0')
-    setToAssetId('')
+    setToAssetId(String(DEFAULT_TO_ASSET.assetId))
     setAmount('')
     setSlippage('1')
     setQuote(null)
@@ -176,7 +255,11 @@ export function useSwapPanel(
     setStatus('idle')
     setError(null)
     setTxId(null)
-  }, [])
+    setSearchRawInput('')
+    setDiscoveredAssets([DEFAULT_TO_ASSET])
+    lookup.reset()
+    nameSearch.reset()
+  }, [lookup, nameSearch])
 
   const retry = useCallback(() => {
     setStatus('idle')
@@ -195,6 +278,7 @@ export function useSwapPanel(
         quote,
         address: activeAddress,
         slippage: parseFloat(slippage) || 1,
+        onSigned: () => setStatus('sending'),
       })
 
       onTransactionSuccess?.()
@@ -228,5 +312,17 @@ export function useSwapPanel(
     handleSwap,
     reset,
     retry,
+    searchInput: searchRawInput,
+    setSearchInput,
+    searchLookupInfo: lookup.assetInfo,
+    searchLookupLoading: lookup.isLoading,
+    searchLookupError: lookup.error,
+    searchNameResults: nameSearch.results,
+    searchNameLoading: nameSearch.isSearching,
+    registryLoading: searchProvider?.registryLoading ?? false,
+    isNameMode,
+    discoveredAssets,
+    pickDiscoveredAsset,
+    clearSearch,
   }
 }

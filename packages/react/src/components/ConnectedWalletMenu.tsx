@@ -24,6 +24,7 @@ import { useAssetRegistry } from '../hooks/useAssetRegistry'
 import { useNfd } from '../hooks/useNfd'
 import { useOptIn } from '../hooks/useOptIn'
 import { useSend } from '../hooks/useSend'
+import { useSwap, type UseSwapOptions } from '../hooks/useSwap'
 import { useBridgeDialog } from '../providers/BridgeDialogProvider'
 import { useWalletUI } from '../providers/WalletUIProvider'
 import { ConnectedWalletButton } from './ConnectedWalletButton'
@@ -35,9 +36,11 @@ type RefableElement = ReactElement & {
 
 export interface ConnectedWalletMenuProps {
   children?: RefableElement
+  /** Swap integration options. When provided, enables the Swap panel. */
+  swap?: UseSwapOptions
 }
 
-function ConnectedWalletMenuContent({ children }: ConnectedWalletMenuProps) {
+function ConnectedWalletMenuContent({ children, swap: swapOptions }: ConnectedWalletMenuProps) {
   const { activeAddress, activeWallet, algodClient } = useWallet()
   const { theme } = useWalletUI()
   const rqClient = useQueryClient()
@@ -47,6 +50,13 @@ function ConnectedWalletMenuContent({ children }: ConnectedWalletMenuProps) {
   const { activeNetwork } = useNetwork()
   const registry = useAssetRegistry()
   const send = useSend()
+
+  // Swap panel — only active when consumer provides swap options
+  const defaultSwapOptions = React.useMemo((): UseSwapOptions => ({
+    fetchQuote: async () => { throw new Error('Swap not configured') },
+    executeSwap: async () => { throw new Error('Swap not configured') },
+  }), [])
+  const swapState = useSwap(swapOptions ?? defaultSwapOptions)
 
   const [showAvailableBalance, setShowAvailableBalance] = useState(() => {
     const stored = localStorage.getItem('uwui:balance-preference')
@@ -131,6 +141,7 @@ function ConnectedWalletMenuContent({ children }: ConnectedWalletMenuProps) {
       if (!open) {
         optIn.reset()
         send.reset()
+        swapState.reset()
       }
     },
     placement: 'bottom-end',
@@ -141,6 +152,8 @@ function ConnectedWalletMenuContent({ children }: ConnectedWalletMenuProps) {
   const txInProgress =
     send.status === 'signing' ||
     send.status === 'sending' ||
+    swapState.status === 'signing' ||
+    swapState.status === 'sending' ||
     optIn.status === 'signing' ||
     optIn.status === 'sending' ||
     bridge.status === 'permit-signing' ||
@@ -266,6 +279,7 @@ function ConnectedWalletMenuContent({ children }: ConnectedWalletMenuProps) {
                     onToggleBalance={toggleBalanceView}
                     send={{ ...send, explorerUrl: getTxExplorerUrl(send.txId) }}
                     optIn={{ ...optIn, evmAddress, explorerUrl: getTxExplorerUrl(optIn.txId) }}
+                    swap={swapOptions ? { ...swapState, accountAssets: assetHoldings.length > 0 ? assetHoldings : undefined, totalBalance, availableBalance, explorerUrl: getTxExplorerUrl(swapState.txId) } : undefined}
                     onBridgeClick={bridge.isAvailable ? openBridge : undefined}
                     assets={assetHoldings.length > 0 ? assetHoldings : undefined}
                     totalBalance={totalBalance}

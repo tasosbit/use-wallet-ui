@@ -3,9 +3,10 @@ import { AddToWalletPanel, type AddToWalletPanelProps } from './AddToWalletPanel
 import { AlgoSymbol } from './AlgoSymbol'
 import { BackButton } from './BackButton'
 import { BridgePanel, type BridgePanelProps } from './BridgePanel'
-import { ArrowDownLeft, ArrowUpRight, ArrowsExchange, Check, ChevronsUpDown, Clipboard, RefreshCw, Search, VerifiedBadge, SuspiciousBadge } from './icons'
+import { ArrowDownLeft, ArrowUpRight, ArrowsExchange, ArrowsUpDown, Check, ChevronsUpDown, Clipboard, RefreshCw, Search, VerifiedBadge, SuspiciousBadge } from './icons'
 import { ReceivePanel, type ReceivePanelProps } from './ReceivePanel'
 import { SendPanel, type SendPanelProps } from './SendPanel'
+import { SwapPanel, type SwapPanelProps } from './SwapPanel'
 
 export interface AssetHoldingDisplay {
   assetId: number
@@ -25,6 +26,7 @@ export interface ManagePanelProps {
   send?: Omit<SendPanelProps, 'onBack'>
   optIn?: Omit<ReceivePanelProps, 'onBack'>
   bridge?: Omit<BridgePanelProps, 'onBack'>
+  swap?: Omit<SwapPanelProps, 'onBack'>
   assets?: AssetHoldingDisplay[]
   totalBalance?: number | null
   availableBalance?: number | null
@@ -80,6 +82,7 @@ export function ManagePanel({
   send,
   optIn,
   bridge,
+  swap,
   assets,
   totalBalance,
   availableBalance,
@@ -97,7 +100,7 @@ export function ManagePanel({
   onAccountSwitch,
   wideBreakpoint,
 }: ManagePanelProps) {
-  type Mode = 'main' | 'send' | 'opt-in' | 'bridge' | 'add-to-wallet'
+  type Mode = 'main' | 'send' | 'opt-in' | 'bridge' | 'swap' | 'add-to-wallet'
   const [mode, setMode] = useState<Mode>('main')
   const [showAllAssets, setShowAllAssets] = useState(false)
   const [animDir, setAnimDir] = useState<'forward' | 'back' | 'none'>('none')
@@ -113,7 +116,7 @@ export function ManagePanel({
     setTimeout(() => setIsCopied(false), 2000)
   }, [activeAddress])
 
-  const goForward = useCallback((target: 'send' | 'opt-in' | 'bridge' | 'add-to-wallet') => {
+  const goForward = useCallback((target: 'send' | 'opt-in' | 'bridge' | 'swap' | 'add-to-wallet') => {
     setAnimDir('forward')
     setMode(target)
   }, [])
@@ -370,6 +373,10 @@ export function ManagePanel({
         <ArrowsExchange className="h-4 w-4 mr-1.5" />
         Bridge
       </button>
+      <button onClick={() => goForward('swap')} disabled={!swap} className={actionBtnClass}>
+        <ArrowsUpDown className="h-4 w-4 mr-1.5" />
+        Swap
+      </button>
       <button onClick={onExplore} disabled={!onExplore} className={actionBtnClass}>
         <Search className="h-4 w-4 mr-1.5" />
         Explore
@@ -395,6 +402,8 @@ export function ManagePanel({
     panelContent = <ReceivePanel {...optIn} onOptOut={handleOptOut} onBack={() => goBack(optIn.reset)} />
   } else if (mode === 'bridge' && bridge) {
     panelContent = <BridgePanel {...bridge} onBack={() => goBack(bridge.onReset)} />
+  } else if (mode === 'swap' && swap) {
+    panelContent = <SwapPanel {...swap} onBack={() => goBack(swap.reset)} />
   } else if (mode === 'add-to-wallet' && addToWallet) {
     panelContent = <AddToWalletPanel {...addToWallet} onBack={() => goBack()} />
   }
@@ -535,6 +544,10 @@ export function ManagePanel({
               <button onClick={onBridgeClick ?? (() => goForward('bridge'))} disabled={!bridge && !onBridgeClick} className={sideActionBtnClass('bridge')}>
                 <ArrowsExchange className="h-4 w-4 mr-1.5" />
                 Bridge
+              </button>
+              <button onClick={() => goForward('swap')} disabled={!swap} className={sideActionBtnClass('swap')}>
+                <ArrowsUpDown className="h-4 w-4 mr-1.5" />
+                Swap
               </button>
               <button onClick={onExplore} disabled={!onExplore} className={`wui-side-btn w-full py-2.5 px-4 font-medium rounded-xl transition-all text-sm flex items-center justify-center disabled:opacity-40 disabled:pointer-events-none bg-[var(--wui-color-bg-tertiary)] text-[var(--wui-color-text)] hover:brightness-90`}>
                 <Search className="h-4 w-4 mr-1.5" />

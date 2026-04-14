@@ -1,4 +1,5 @@
 import { getDefaultConfig as rkGetDefaultConfig } from '@rainbow-me/rainbowkit'
+import { http } from 'wagmi'
 import {
   mainnet,
   base,
@@ -37,6 +38,25 @@ import type { RainbowKitUIConfig } from './providers/WalletUIProvider'
  * getConnectorClient, etc.) work when MetaMask is on any of these networks.
  */
 const BRIDGE_CHAINS = [mainnet, base, bsc, polygon, arbitrum, avalanche, optimism, celo, sonic, unichain, linea]
+
+/**
+ * Default HTTP transports for bridge chains using DRPC public endpoints.
+ * Prevents wagmi from using viem's built-in defaults (e.g. eth.merkle.io)
+ * which can generate excessive background requests.
+ */
+const BRIDGE_TRANSPORTS: Record<number, ReturnType<typeof http>> = {
+  [mainnet.id]: http('https://eth.drpc.org'),
+  [base.id]: http('https://base.drpc.org'),
+  [bsc.id]: http('https://bsc.drpc.org'),
+  [polygon.id]: http('https://polygon.drpc.org'),
+  [arbitrum.id]: http('https://arbitrum.drpc.org'),
+  [avalanche.id]: http('https://avalanche.drpc.org'),
+  [optimism.id]: http('https://optimism.drpc.org'),
+  [celo.id]: http('https://celo.drpc.org'),
+  [sonic.id]: http('https://sonic.drpc.org'),
+  [unichain.id]: http('https://unichain.drpc.org'),
+  [linea.id]: http('https://linea.drpc.org'),
+}
 
 const DEFAULT_WALLETS = [
   {
@@ -151,10 +171,15 @@ export const getDefaultConfig = (params: Parameters<typeof rkGetDefaultConfig>[0
       : {}),
   }
 
+  // Merge DRPC transports with user-provided transports
+  const userTransports = p.transports ?? {}
+  const transports = { ...BRIDGE_TRANSPORTS, ...userTransports }
+
   const config = rkGetDefaultConfig({
     wallets: DEFAULT_WALLETS,
     ...params,
     chains: chains as any,
+    transports,
     ...(appUrl ? { appUrl } : {}),
     ...(walletConnectParameters ? { walletConnectParameters } : {}),
   })

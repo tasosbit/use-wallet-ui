@@ -47,6 +47,8 @@ export interface ManagePanelProps {
   accounts?: { address: string; displayName?: string | null; icon?: string | null }[]
   /** Called when user selects a different account */
   onAccountSwitch?: (address: string) => void
+  /** EVM controller address — shown between the account switcher and balance */
+  evmAddress?: string | null
   /** Enable two-column layout via container query at the given width (default: off) */
   wideBreakpoint?: number
 }
@@ -70,8 +72,8 @@ function formatDisplayAmount(amount: string): string {
 }
 
 function formatShortAddr(addr: string, prefixLen = 6, suffixLen = 4): string {
-  if (addr.length <= prefixLen + suffixLen + 3) return addr
-  return `${addr.slice(0, prefixLen)}...${addr.slice(-suffixLen)}`
+  if (addr.length <= prefixLen + suffixLen + 2) return addr
+  return `${addr.slice(0, prefixLen)}..${addr.slice(-suffixLen)}`
 }
 
 export function ManagePanel({
@@ -98,6 +100,7 @@ export function ManagePanel({
   onDisconnect,
   accounts,
   onAccountSwitch,
+  evmAddress,
   wideBreakpoint,
 }: ManagePanelProps) {
   type Mode = 'main' | 'send' | 'opt-in' | 'bridge' | 'swap' | 'add-to-wallet'
@@ -265,6 +268,13 @@ export function ManagePanel({
     </div>
   )
 
+  const evmControllerSection = evmAddress ? (
+    <div className="mb-3 bg-[var(--wui-color-bg-secondary)] rounded-lg px-3 py-2">
+      <span className="text-xs text-[var(--wui-color-text-secondary)]">EVM Controller</span>
+      <code className="text-sm font-medium text-[var(--wui-color-text)] truncate block mt-0.5">{evmAddress}</code>
+    </div>
+  ) : null
+
   const balanceNarrow = (
     <div className="wui-balance mb-4 bg-[var(--wui-color-bg-secondary)] rounded-lg p-3">
       <div className="flex justify-between items-center">
@@ -422,6 +432,7 @@ export function ManagePanel({
     const content = panelContent ?? (
       <>
         {headerSection}
+        {evmControllerSection}
         {balanceNarrow}
         {assetsSection}
         <div className="border-t border-[var(--wui-color-border)] mb-3" />
@@ -508,6 +519,7 @@ export function ManagePanel({
       `}</style>
       <div style={{ containerName: 'wui-manage', containerType: 'inline-size' }}>
         {headerSection}
+        {evmControllerSection}
 
         {/* ── Narrow layout (below breakpoint) ── */}
         <div className="wui-narrow-only" style={{ display: 'block' }}>

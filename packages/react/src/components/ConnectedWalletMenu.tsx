@@ -296,6 +296,7 @@ function ConnectedWalletMenuContent({ children, swap: swapOptions }: ConnectedWa
                     onExplore={handleExplore}
                     activeAddress={activeAddress}
                     displayName={nfdName}
+                    evmAddress={evmAddress}
                     walletName={evmWalletName}
                     walletIcon={evmWalletIcon}
                     onDisconnect={handleDisconnect}

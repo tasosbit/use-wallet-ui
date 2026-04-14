@@ -39,7 +39,7 @@ export function AddToWalletPanel({
         </p>
         <button
           onClick={onAddNetwork}
-          className="w-full py-2.5 px-4 bg-[var(--wui-color-primary)] text-white font-medium rounded-xl hover:brightness-90 transition-all text-sm flex items-center justify-center gap-1.5"
+          className="w-full py-2.5 px-4 bg-[var(--wui-color-primary)] text-[var(--wui-color-primary-text)] font-medium rounded-xl hover:brightness-90 transition-all text-sm flex items-center justify-center gap-1.5"
         >
           <img src={walletIcon} alt={`${walletName} icon`} width={16} height={16} className="object-contain" />
           Add Algorand to {walletName}
@@ -68,7 +68,7 @@ export function AddToWalletPanel({
               </span>
               <button
                 onClick={() => onAddAsset(asset)}
-                className="shrink-0 px-2.5 py-1 text-xs font-medium rounded-md bg-[var(--wui-color-bg-tertiary)] text-[var(--wui-color-text-secondary)] hover:brightness-90 transition-all"
+                className="shrink-0 px-2.5 py-1 text-xs font-medium rounded-md bg-[var(--wui-color-primary)] text-[var(--wui-color-primary-text)] hover:brightness-90 transition-all"
               >
                 Add
               </button>

@@ -3,7 +3,7 @@ import { AddToWalletPanel, type AddToWalletPanelProps } from './AddToWalletPanel
 import { AlgoSymbol } from './AlgoSymbol'
 import { BackButton } from './BackButton'
 import { BridgePanel, type BridgePanelProps } from './BridgePanel'
-import { ArrowDownLeft, ArrowUpRight, ArrowsExchange, ArrowsUpDown, Check, ChevronsUpDown, Clipboard, RefreshCw, Search, VerifiedBadge, SuspiciousBadge } from './icons'
+import { ArrowDownLeft, ArrowUpRight, ArrowsExchange, ArrowsUpDown, Check, ChevronsUpDown, Clipboard, List, RefreshCw, Search, VerifiedBadge, SuspiciousBadge } from './icons'
 import { ReceivePanel, type ReceivePanelProps } from './ReceivePanel'
 import { SendPanel, type SendPanelProps } from './SendPanel'
 import { SwapPanel, type SwapPanelProps } from './SwapPanel'
@@ -35,7 +35,7 @@ export interface ManagePanelProps {
   onExplore?: () => void
   /** When provided, the Bridge button calls this instead of navigating to the embedded bridge panel */
   onBridgeClick?: () => void
-  /** Called when entering the embedded bridge panel (e.g. to enable fee/quote loading) */
+  /** Called when the user navigates to the embedded bridge panel (e.g. to enable data loading) */
   onBridgeEnter?: () => void
   addToWallet?: Omit<AddToWalletPanelProps, 'onBack'>
   /** Connected wallet info — when provided, shows address, wallet identity, copy & disconnect */
@@ -346,7 +346,7 @@ export function ManagePanel({
                   className="wui-asset-send inline-flex items-center justify-center w-4 h-4 rounded-xs border border-[var(--wui-color-border)] text-[var(--wui-color-text-secondary)] hover:text-[var(--wui-color-text-secondary)] hover:border-[var(--wui-color-text-secondary)] transition-colors shrink-0"
                   title={`Send ${asset.unitName || asset.name}`}
                 >
-                  <span className="wui-asset-send-label" style={{ display: 'none' }}>Send</span>
+                  <span className="wui-asset-send-label" style={{ display: 'none' }}>SEND</span>
                   <ArrowUpRight size={10} strokeWidth={2.5} className="wui-asset-send-icon" />
                 </button>
               )}
@@ -380,7 +380,7 @@ export function ManagePanel({
         <ArrowDownLeft className="h-4 w-4 mr-1.5" />
         Receive
       </button>
-      <button onClick={onBridgeClick ?? (() => goForward('bridge'))} disabled={!bridge && !onBridgeClick} className={actionBtnClass}>
+      <button onClick={onBridgeClick ?? (() => { onBridgeEnter?.(); goForward('bridge') })} disabled={!bridge && !onBridgeClick} className={actionBtnClass}>
         <ArrowsExchange className="h-4 w-4 mr-1.5" />
         Bridge
       </button>
@@ -544,6 +544,7 @@ export function ManagePanel({
           <div className="shrink-0" style={{ width: '180px' }}>
             <div className="flex flex-col gap-2">
               <button onClick={() => { setAnimDir('none'); setMode('main') }} className={sideActionBtnClass('main')}>
+                <List className="h-4 w-4 mr-1.5" />
                 Overview
               </button>
               <button onClick={() => goForward('send')} disabled={!send} className={sideActionBtnClass('send')}>
@@ -554,7 +555,7 @@ export function ManagePanel({
                 <ArrowDownLeft className="h-4 w-4 mr-1.5" />
                 Receive
               </button>
-              <button onClick={onBridgeClick ?? (() => goForward('bridge'))} disabled={!bridge && !onBridgeClick} className={sideActionBtnClass('bridge')}>
+              <button onClick={onBridgeClick ?? (() => { onBridgeEnter?.(); goForward('bridge') })} disabled={!bridge && !onBridgeClick} className={sideActionBtnClass('bridge')}>
                 <ArrowsExchange className="h-4 w-4 mr-1.5" />
                 Bridge
               </button>

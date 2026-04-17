@@ -127,7 +127,7 @@ function ConnectedWalletMenuContent({ children, swap: swapOptions }: ConnectedWa
           }
         }
         const pera = peraData.get(Number(holding.assetId))
-        const result: AssetHoldingDisplay = {
+        const entry: AssetHoldingDisplay = {
           assetId: Number(holding.assetId),
           name: info.name || `ASA#${holding.assetId}`,
           unitName: info.unitName,
@@ -136,7 +136,7 @@ function ConnectedWalletMenuContent({ children, swap: swapOptions }: ConnectedWa
           logo: pera?.logo,
           verificationTier: pera?.verificationTier,
         }
-        return result
+        return entry
       })
       .filter((a): a is AssetHoldingDisplay => a !== null)
   }, [allHoldings, assetInfoMap, peraData])

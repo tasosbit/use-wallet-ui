@@ -168,6 +168,19 @@ export function Clipboard(props: IconProps) {
   )
 }
 
+export function List(props: IconProps) {
+  return (
+    <StrokeIcon {...props}>
+      <line x1="8" x2="21" y1="6" y2="6" />
+      <line x1="8" x2="21" y1="12" y2="12" />
+      <line x1="8" x2="21" y1="18" y2="18" />
+      <line x1="3" x2="3.01" y1="6" y2="6" />
+      <line x1="3" x2="3.01" y1="12" y2="12" />
+      <line x1="3" x2="3.01" y1="18" y2="18" />
+    </StrokeIcon>
+  )
+}
+
 export function VerifiedBadge({ size = 14, className = 'inline-block ml-1 -mt-0.5' }: IconProps) {
   return (
     <svg

@@ -269,7 +269,6 @@ export function SwapPanel({
                 <input
                   type="text"
                   inputMode="decimal"
-                  placeholder="0"
                   autoFocus={true}
                   value={amount}
                   onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ''))}
@@ -500,10 +499,10 @@ export function SwapPanel({
                 </div>
               )}
               <div className="flex justify-between items-center text-xs">
-                <span className="text-[var(--wui-color-text-secondary)]">Route</span>
+                <span className="text-[var(--wui-color-text-secondary)] mr-2">Route</span>
                 <span className="text-[var(--wui-color-text-secondary)]">
                   {Object.entries(quote.flattenedRoute)
-                    .map(([protocol, pct]) => `${protocol}: ${pct}%`)
+                    .map(([protocol, pct]) => `${protocol}: ${pct.toFixed(2)}%`)
                     .join(', ')}
                 </span>
               </div>

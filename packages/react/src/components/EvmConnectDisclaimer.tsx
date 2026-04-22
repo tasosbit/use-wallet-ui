@@ -56,7 +56,7 @@ export function EvmConnectDisclaimer() {
     <FloatingPortal id="wallet-evm-connect-disclaimer-portal">
       <div data-wallet-theme data-wallet-ui data-theme={dataTheme}>
         <FloatingOverlay
-          className="grid place-items-center px-4 z-[100] bg-[var(--wui-color-overlay)]"
+          className="grid place-items-center px-4 z-[110] bg-[var(--wui-color-overlay)]"
           lockScroll
         >
           <FloatingFocusManager context={context} modal={true}>

@@ -1,6 +1,8 @@
 import { CopyButton } from './CopyButton'
 import { XFilled } from './icons'
 
+const DOCS_URL = (import.meta.env.VITE_DOCS_URL as string | undefined)?.replace(/\/+$/, '') ?? ''
+
 export interface WelcomeContentProps {
   algorandAddress: string
   evmAddress: string
@@ -51,11 +53,8 @@ export function WelcomeContent({
           <a
             className="text-[var(--wui-color-link)] hover:text-[var(--wui-color-link-hover)]"
             rel="noopener noreferrer"
-            href="#"
-            onClick={() => {
-              alert('Soon')
-              return false
-            }}
+            target="_blank"
+            href={`${DOCS_URL}/docs/what-is-algo-x-evm`}
           >
             Learn more.
           </a>

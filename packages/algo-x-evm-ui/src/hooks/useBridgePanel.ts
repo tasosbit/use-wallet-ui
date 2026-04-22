@@ -86,6 +86,14 @@ export interface UseBridgePanelReturn {
   chains: BridgeChain[]
   chainsLoading: boolean
   balancesLoading: boolean
+  /**
+   * True once chains are loaded AND — if the user has a wallet connected — the
+   * first balance fetch has completed (success or failure). Consumers should
+   * gate the form on this rather than just `chainsLoading` so the chain select
+   * labels (which include the wallet's balance) render with their final width
+   * on first paint instead of updating after the form is visible.
+   */
+  initialLoadComplete: boolean
   sourceChain: BridgeChain | null
   setSourceChain: (symbol: string) => void
   sourceToken: BridgeToken | null
@@ -225,6 +233,11 @@ export function useBridgePanel(wallet: BridgeWalletAdapter, options: UseBridgeOp
   // Token balance state
   const [tokenBalances, setTokenBalances] = useState<TokenBalanceMap>({})
   const [balancesLoading, setBalancesLoading] = useState(false)
+  // Flips true once either the EVM or ALG balance fetch has completed at least
+  // once (or immediately if there's no wallet to fetch for). Used to gate the
+  // form render so chain-select labels don't visually swap from "Ethereum" to
+  // "Ethereum (X USDC)" after the form first appears.
+  const [balancesFetchedOnce, setBalancesFetchedOnce] = useState(false)
 
   // Selection state
   const [selectedSourceChainSymbol, setSelectedSourceChainSymbol] = useState<string | null>(null)
@@ -284,6 +297,12 @@ export function useBridgePanel(wallet: BridgeWalletAdapter, options: UseBridgeOp
 
   // Direction flag: true when bridging FROM Algorand TO an EVM chain
   const sourceIsAlgorand = selectedSourceChainSymbol === 'ALG'
+
+  // True once initial data is ready to render the form. Waits for chains AND —
+  // when a wallet is connected — the first balance fetch, so the source-chain
+  // select renders with its final (balance-inclusive) label on first paint.
+  const hasWalletForBalances = !!evmAddress || !!activeAddress
+  const initialLoadComplete = allChains.length > 0 && (!hasWalletForBalances || balancesFetchedOnce)
 
   // Effective destination chain: defaults to ALG for EVM→ALG, or the selected EVM chain for ALG→EVM
   const effectiveDestChainSymbol = selectedDestChainSymbol ?? 'ALG'
@@ -502,7 +521,10 @@ export function useBridgePanel(wallet: BridgeWalletAdapter, options: UseBridgeOp
       } catch (err) {
         console.warn('[useBridgePanel] Balance fetch failed:', err)
       } finally {
-        if (!cancelled) setBalancesLoading(false)
+        if (!cancelled) {
+          setBalancesLoading(false)
+          setBalancesFetchedOnce(true)
+        }
       }
     })()
 
@@ -539,7 +561,10 @@ export function useBridgePanel(wallet: BridgeWalletAdapter, options: UseBridgeOp
       } catch (err) {
         console.warn('[useBridgePanel] ALG balance fetch failed:', err)
       } finally {
-        if (!cancelled) setBalancesLoading(false)
+        if (!cancelled) {
+          setBalancesLoading(false)
+          setBalancesFetchedOnce(true)
+        }
       }
     })()
 
@@ -1651,6 +1676,7 @@ export function useBridgePanel(wallet: BridgeWalletAdapter, options: UseBridgeOp
     chains,
     chainsLoading,
     balancesLoading,
+    initialLoadComplete,
     sourceChain,
     setSourceChain,
     sourceToken,

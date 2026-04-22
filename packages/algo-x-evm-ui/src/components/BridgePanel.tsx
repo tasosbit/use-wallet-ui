@@ -45,6 +45,13 @@ export interface BridgePanelProps {
   chains: BridgeChainDisplay[]
   chainsLoading: boolean
   balancesLoading?: boolean
+  /**
+   * When provided, the form is hidden (and a spinner shown) until this flips
+   * true — ensuring the source-chain select renders with its final balance-
+   * inclusive label on first paint. When omitted, falls back to legacy
+   * behavior of showing the form as soon as chains are loaded.
+   */
+  initialLoadComplete?: boolean
   sourceChainSymbol: string | null
   onSourceChainChange: (symbol: string) => void
   sourceTokenSymbol: string | null
@@ -224,6 +231,7 @@ function formatTimeRemaining(ms: number): string {
 export function BridgePanel({
   chains,
   chainsLoading,
+  initialLoadComplete,
   sourceChainSymbol,
   onSourceChainChange,
   sourceTokenSymbol,
@@ -334,6 +342,11 @@ export function BridgePanel({
     [destinationTokens],
   )
 
+  // `initialLoadComplete === false` means the consumer is using the new gated
+  // behavior and the first balance fetch hasn't finished yet. Treat `undefined`
+  // as loaded for backward compatibility with consumers that don't pass the prop.
+  const initialLoading = chainsLoading || initialLoadComplete === false
+
   return (
     <>
       {/* Header */}
@@ -346,8 +359,8 @@ export function BridgePanel({
         </div>
       )}
 
-      {/* Loading chains */}
-      {chainsLoading && (
+      {/* Loading chains / initial balances */}
+      {initialLoading && (
         <div className="flex items-center justify-center py-8 text-sm text-[var(--wui-color-text-secondary)]">
           <Spinner className="h-4 w-4 mr-2" />
           Loading bridge routes
@@ -355,7 +368,7 @@ export function BridgePanel({
       )}
 
       {/* No chains available */}
-      {!chainsLoading && status === 'idle' && chains.length === 0 && (
+      {!initialLoading && status === 'idle' && chains.length === 0 && (
         <div className="text-center pt-6">
           <p className="text-sm text-[var(--wui-color-text-secondary)] mb-2">Bridge routes are currently unavailable.</p>
           <SecondaryButton onClick={onRetry}>Try again</SecondaryButton>
@@ -363,7 +376,7 @@ export function BridgePanel({
       )}
 
       {/* Form (visible in idle state only) */}
-      {!chainsLoading && status === 'idle' && chains.length > 0 && (
+      {!initialLoading && status === 'idle' && chains.length > 0 && (
         <>
           <p className="text-xs text-[var(--wui-color-text-secondary)] mb-3">
             {sourceIsAlgorand

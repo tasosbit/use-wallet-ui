@@ -20,6 +20,7 @@ export function mapBridgeToPanelProps(
     })),
     chainsLoading: bridge.chainsLoading,
     balancesLoading: bridge.balancesLoading,
+    initialLoadComplete: bridge.initialLoadComplete,
     sourceChainSymbol: bridge.sourceChain?.chainSymbol ?? null,
     onSourceChainChange: bridge.setSourceChain,
     sourceTokenSymbol: bridge.sourceToken?.symbol ?? null,

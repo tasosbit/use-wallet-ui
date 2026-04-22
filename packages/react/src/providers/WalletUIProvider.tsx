@@ -700,7 +700,7 @@ export function WalletUIProvider({
   const wrappedChildren = effectiveRainbowkit ? (
     <effectiveRainbowkit.Provider queryClient={queryClient} resolvedTheme={resolvedTheme} walletManager={manager}>
       {children}
-      <EvmConnectDisclaimer />
+      <EvmConnectDisclaimer onCancel={() => setPendingWelcome(null)} />
     </effectiveRainbowkit.Provider>
   ) : (
     children

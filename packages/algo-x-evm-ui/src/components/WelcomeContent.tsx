@@ -1,7 +1,16 @@
 import { CopyButton } from './CopyButton'
 import { XFilled } from './icons'
 
-const DOCS_URL = (import.meta.env.VITE_DOCS_URL as string | undefined)?.replace(/\/+$/, '') ?? ''
+declare global {
+  interface ImportMetaEnv {
+    readonly VITE_DOCS_URL?: string
+  }
+  interface ImportMeta {
+    readonly env: ImportMetaEnv
+  }
+}
+
+const DOCS_URL = (import.meta.env.VITE_DOCS_URL ?? '').replace(/\/+$/, '')
 
 export interface WelcomeContentProps {
   algorandAddress: string

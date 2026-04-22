@@ -14,6 +14,10 @@ import { useNotice } from '@d13co/algo-x-evm-ui'
 
 import { useWalletUI } from '../providers/WalletUIProvider'
 
+interface EvmConnectDisclaimerProps {
+  onCancel?: () => void
+}
+
 /**
  * Internal gate rendered inside the RainbowKit/wagmi provider tree. When the
  * consumer supplies a `'evm-connect'` notice on WalletUIProvider and the user
@@ -22,7 +26,7 @@ import { useWalletUI } from '../providers/WalletUIProvider'
  * cancelling disconnects the wagmi session without marking it acknowledged,
  * so the gate re-appears on the next connect.
  */
-export function EvmConnectDisclaimer() {
+export function EvmConnectDisclaimer({ onCancel }: EvmConnectDisclaimerProps = {}) {
   const { isConnected } = useAccount()
   const { disconnect } = useDisconnect()
   const { config, isAcknowledged, acknowledge } = useNotice('evm-connect')
@@ -50,6 +54,7 @@ export function EvmConnectDisclaimer() {
   const handleCancel = () => {
     setChecked(false)
     disconnect()
+    onCancel?.()
   }
 
   return (

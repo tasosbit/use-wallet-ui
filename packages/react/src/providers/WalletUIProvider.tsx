@@ -14,6 +14,7 @@ import { decodeTransactions, TransactionDanger, type DecodedTransaction } from '
 import { NoticeProvider, type NoticesConfig } from '@d13co/algo-x-evm-ui'
 
 import type { NfdLookupResponse, NfdView } from '../hooks/useNfd'
+import type { UseSwapOptions } from '../hooks/useSwap'
 import { AlgoXEvmSdk } from 'algo-x-evm-sdk'
 
 // Extension message constants (duplicated from extension package to avoid cross-dependency)
@@ -178,6 +179,11 @@ interface WalletUIContextType {
   requestBeforeSign: (txnGroup: algosdk.Transaction[] | Uint8Array[], indexesToSign?: number[]) => Promise<void>
   requestAfterSign: (success: boolean, errorMessage?: string) => void
   requestWelcome: (account: WelcomeAccount) => void
+  /**
+   * Swap integration options, if provided on the provider. Consumed by
+   * <ConnectedWalletMenu> to enable the Swap panel inside the WalletButton menu.
+   */
+  swap?: UseSwapOptions
 }
 
 /**
@@ -249,6 +255,14 @@ interface WalletUIProviderProps {
    * wrappers — all acknowledgements share a single localStorage object.
    */
   notices?: NoticesConfig
+  /**
+   * Swap integration options. When provided, the Swap panel is enabled inside
+   * the `<WalletButton />` menu. Typically produced by wiring up a router SDK
+   * (e.g. `@txnlab/haystack-router`) to expose `fetchQuote` and `executeSwap`.
+   *
+   * If omitted, the Swap tab is hidden.
+   */
+  swap?: UseSwapOptions
 }
 
 // Default query client configuration for NFD queries
@@ -421,6 +435,7 @@ export function WalletUIProvider({
   rainbowkit,
   wagmiConfig,
   notices,
+  swap,
 }: WalletUIProviderProps) {
   // Auto-create RainbowKit config from wagmiConfig when rainbowkit prop isn't provided.
   // Uses dynamic import so wagmi/@rainbow-me/rainbowkit remain truly optional peer deps.
@@ -688,8 +703,9 @@ export function WalletUIProvider({
       requestBeforeSign,
       requestAfterSign,
       requestWelcome,
+      swap,
     }),
-    [queryClient, theme, resolvedTheme, requestBeforeSign, requestAfterSign, requestWelcome],
+    [queryClient, theme, resolvedTheme, requestBeforeSign, requestAfterSign, requestWelcome, swap],
   )
 
   // Determine the data-theme attribute value

@@ -36,13 +36,11 @@ type RefableElement = ReactElement & {
 
 export interface ConnectedWalletMenuProps {
   children?: RefableElement
-  /** Swap integration options. When provided, enables the Swap panel. */
-  swap?: UseSwapOptions
 }
 
-function ConnectedWalletMenuContent({ children, swap: swapOptions }: ConnectedWalletMenuProps) {
+function ConnectedWalletMenuContent({ children }: ConnectedWalletMenuProps) {
   const { activeAddress, activeWallet, activeWalletAccounts, algodClient } = useWallet()
-  const { theme } = useWalletUI()
+  const { theme, swap: swapOptions } = useWalletUI()
   const rqClient = useQueryClient()
   const isFetching = useIsFetching()
   const [isOpen, setIsOpen] = useState(false)

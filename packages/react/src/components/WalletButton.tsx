@@ -2,7 +2,7 @@ import { useWallet } from '@txnlab/use-wallet-react'
 import React from 'react'
 
 import { ConnectedWalletButton } from './ConnectedWalletButton'
-import { ConnectedWalletMenu, type ConnectedWalletMenuProps } from './ConnectedWalletMenu'
+import { ConnectedWalletMenu } from './ConnectedWalletMenu'
 import { type ButtonSize, ConnectWalletButton } from './ConnectWalletButton'
 import { ConnectWalletMenu } from './ConnectWalletMenu'
 
@@ -13,17 +13,16 @@ export interface WalletButtonProps {
   className?: string
   /** Inline styles to apply to the button (can include CSS variable overrides) */
   style?: React.CSSProperties
-  /** Swap integration options. When provided, enables the Swap panel. */
-  swap?: ConnectedWalletMenuProps['swap']
 }
 
-export function WalletButton({ size, className, style, swap }: WalletButtonProps) {
+export function WalletButton({ size, className, style }: WalletButtonProps) {
   const { activeAddress } = useWallet()
 
-  // If connected, show the connected wallet menu
+  // If connected, show the connected wallet menu.
+  // Swap integration is configured on <WalletUIProvider swap={...} /> and read from context.
   if (activeAddress) {
     return (
-      <ConnectedWalletMenu swap={swap}>
+      <ConnectedWalletMenu>
         <ConnectedWalletButton size={size} className={className} style={style} />
       </ConnectedWalletMenu>
     )

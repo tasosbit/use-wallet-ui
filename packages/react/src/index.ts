@@ -26,6 +26,8 @@ export type { RainbowKitUIConfig } from './providers/WalletUIProvider'
 export { useBridgeDialog } from './providers/BridgeDialogProvider'
 export type { BridgeDialogContextType } from './providers/BridgeDialogProvider'
 export { mapBridgeToPanelProps } from './utils/bridgePropsMapper'
+export { getSwapConfig } from './utils/getSwapConfig'
+export type { GetSwapConfigOptions, SwapRouterLike } from './utils/getSwapConfig'
 
 export { getDefaultConfig } from './rainbowkit'
 

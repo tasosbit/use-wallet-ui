@@ -572,12 +572,6 @@ export function WalletUIProvider({
           '*',
         )
       }
-
-      if (!dangerous) {
-        setTimeout(() => {
-          wrappedResolve()
-        }, 2500)
-      }
     })
   }, [extensionDetected])
 
@@ -672,9 +666,6 @@ export function WalletUIProvider({
   }, [manager, requestBeforeSign, requestAfterSign, onConnect])
 
   const handleApproveSign = useCallback(() => {
-    if (!pendingSign?.dangerous) {
-      setShowSignDialog(false)
-    }
     pendingSign?.resolve()
   }, [pendingSign])
 
@@ -735,7 +726,7 @@ export function WalletUIProvider({
               <ExtensionSignIndicator transactionCount={pendingSign!.transactions.length} dangerous={pendingSign!.dangerous} onReject={handleRejectSign} />
             )}
             {showSignDialog && !extensionDetected && (
-              <BeforeSignDialog transactions={pendingSign!.transactions} message={pendingSign!.message} dangerous={pendingSign!.dangerous} genesisHash={pendingSign!.genesisHash} genesisID={pendingSign!.genesisID} onApprove={handleApproveSign} onReject={handleRejectSign} onClose={() => setShowSignDialog(false)} signing={signing} walletName={activeWallet?.metadata?.name} algodClient={algodClient} network={activeNetwork} />
+              <BeforeSignDialog transactions={pendingSign!.transactions} message={pendingSign!.message} dangerous={pendingSign!.dangerous} genesisHash={pendingSign!.genesisHash} genesisID={pendingSign!.genesisID} onApprove={handleApproveSign} onReject={handleRejectSign} signing={signing} walletName={activeWallet?.metadata?.name} walletIcon={activeWallet?.metadata?.icon} algodClient={algodClient} network={activeNetwork} />
             )}
             {pendingWelcome && (
               <WelcomeDialog algorandAddress={pendingWelcome.algorandAddress} evmAddress={pendingWelcome.evmAddress} onDismiss={() => setPendingWelcome(null)} />

@@ -4,12 +4,21 @@ import * as mocks from './mocks'
 
 const TESTNET_GENESIS_HASH = 'SGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiI='
 
+// Inline SVG data URL so stories don't need network access to render a wallet icon.
+const SAMPLE_WALLET_ICON =
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="%23FFB800"/><path d="M10 22l4-12h4l4 12h-3l-.8-2.5h-4.4L13 22h-3zm5.2-5h2.6l-1.3-4-1.3 4z" fill="%23000"/></svg>',
+  )
+
 const meta: Meta<typeof TransactionReview> = {
   title: 'TransactionReview',
   component: TransactionReview,
   args: {
     message: '0xa1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2',
     dangerous: false,
+    walletName: 'Pera Wallet',
+    walletIcon: SAMPLE_WALLET_ICON,
     onApprove: () => console.log('approved'),
     onReject: () => console.log('rejected'),
   },

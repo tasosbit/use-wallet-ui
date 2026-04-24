@@ -20,17 +20,17 @@ interface BeforeSignDialogProps {
   message: string
   onApprove: () => void
   onReject: () => void
-  onClose: () => void
   dangerous: TransactionDanger
   genesisHash?: string | null
   genesisID?: string | null
   signing?: boolean
   walletName?: string
+  walletIcon?: string
   algodClient?: AssetLookupClient
   network?: string
 }
 
-export function BeforeSignDialog({ transactions, message, dangerous, genesisHash, genesisID, onApprove, onReject, onClose, signing, walletName, algodClient, network }: BeforeSignDialogProps) {
+export function BeforeSignDialog({ transactions, message, dangerous, genesisHash, genesisID, onApprove, onReject, signing, walletName, walletIcon, algodClient, network }: BeforeSignDialogProps) {
   const { theme } = useWalletUI()
   const [animationState, setAnimationState] = useState<'starting' | 'entered' | 'exiting' | null>('starting')
 
@@ -41,11 +41,7 @@ export function BeforeSignDialog({ transactions, message, dangerous, genesisHash
     onOpenChange: (open) => {
       if (!open && !signing) {
         setAnimationState('exiting')
-        if (dangerous) {
-          setTimeout(() => onReject(), 150)
-        } else {
-          setTimeout(() => onClose(), 150)
-        }
+        setTimeout(() => onReject(), 150)
       }
     },
   })
@@ -67,9 +63,7 @@ export function BeforeSignDialog({ transactions, message, dangerous, genesisHash
       onClick={() => {
         if (signing) return
         setAnimationState('exiting')
-        setTimeout(() => {
-          dangerous ? onReject() : onApprove()
-        }, 150)
+        setTimeout(() => onReject(), 150)
       }}
       disabled={signing}
       className="w-8 h-8 flex-none flex items-center justify-center rounded-full bg-[var(--wui-color-bg-tertiary)] text-[var(--wui-color-text-secondary)] hover:brightness-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:brightness-100"
@@ -115,20 +109,14 @@ export function BeforeSignDialog({ transactions, message, dangerous, genesisHash
                   algodClient={algodClient}
                   network={network}
                   getApplicationAddress={(appId: number) => getApplicationAddress(BigInt(appId))}
-                  onApprove={() => {
-                    if (dangerous) {
-                      onApprove()
-                    } else {
-                      setAnimationState('exiting')
-                      setTimeout(() => onApprove(), 150)
-                    }
-                  }}
+                  onApprove={onApprove}
                   onReject={() => {
                     setAnimationState('exiting')
                     setTimeout(() => onReject(), 150)
                   }}
                   signing={signing}
                   walletName={walletName}
+                  walletIcon={walletIcon}
                   headerAction={closeButton}
                 />
               </InfoDialog>

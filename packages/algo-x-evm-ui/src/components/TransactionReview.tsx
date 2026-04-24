@@ -20,10 +20,7 @@ function isLocalNetGenesisID(genesisID: string): boolean {
   return genesisID.startsWith('sandnet') || genesisID.startsWith('dockernet')
 }
 
-function resolveNetworkName(
-  genesisHash: string | null | undefined,
-  genesisID: string | null | undefined,
-): string | null {
+function resolveNetworkName(genesisHash: string | null | undefined, genesisID: string | null | undefined): string | null {
   if (genesisHash) {
     const name = GENESIS_HASH_NETWORK[genesisHash]
     if (name) return name
@@ -44,6 +41,7 @@ export interface TransactionReviewProps {
   onReject: () => void
   signing?: boolean
   walletName?: string
+  walletIcon?: string
   origin?: string
   headerAction?: ReactNode
   payloadVerified?: boolean | null
@@ -64,6 +62,7 @@ export function TransactionReview({
   onReject,
   signing,
   walletName,
+  walletIcon,
   origin,
   headerAction,
   payloadVerified,
@@ -122,11 +121,7 @@ export function TransactionReview({
       </div>
 
       {/* Origin (extension shows request origin) */}
-      {origin && (
-        <div className="px-6 text-xs text-[var(--wui-color-text-secondary)] truncate">
-          {origin}
-        </div>
-      )}
+      {origin && <div className="px-6 text-xs text-[var(--wui-color-text-secondary)] truncate">{origin}</div>}
 
       {/* Danger description */}
       {dangerous ? (
@@ -148,13 +143,21 @@ export function TransactionReview({
           {unknownNetwork && (
             <div className="font-bold text-[var(--wui-color-danger-text)] mb-1">Warning — unknown network genesis hash</div>
           )}
-          {transactions.length === 1
-            ? networkName
-              ? <>You are about to sign the following transaction on <strong>{networkName}</strong>:</>
-              : 'You are about to sign the following transaction:'
-            : networkName
-              ? <>You are about to sign {transactions.length} transactions on <strong>{networkName}</strong>:</>
-              : `You are about to sign ${transactions.length} transactions:`}
+          {transactions.length === 1 ? (
+            networkName ? (
+              <>
+                Signing <strong>{networkName}</strong> transaction:
+              </>
+            ) : (
+              'Signing transaction:'
+            )
+          ) : networkName ? (
+            <>
+              Signing {transactions.length} <strong>{networkName}</strong> transactions:
+            </>
+          ) : (
+            `Signing ${transactions.length} transactions:`
+          )}
         </div>
       )}
 
@@ -204,18 +207,22 @@ export function TransactionReview({
       <div className="px-4 pb-4">
         <div className="text-sm flex flex-col gap-2 border border-[var(--wui-color-border)] rounded-xl p-3">
           <div className="flex items-center gap-2">
-            <span>Transaction ID to sign:</span>
-            {payloadVerified === true && (
-              <span className="text-xs text-green-600 font-medium">Verified</span>
-            )}
+            <span>Ensure {walletName} shows this transaction ID:</span>
           </div>
           <div className="font-mono break-all text-[var(--wui-color-danger-text)]">{message}</div>
-          <div>Ensure the transaction ID is correct before approving.</div>
         </div>
       </div>
 
       {/* Footer */}
-      {dangerous && !signing ? (
+      {signing ? (
+        <div className="px-6 py-4 border-t border-[var(--wui-color-border)]">
+          <div className="flex items-center gap-2 text-sm text-[var(--wui-color-text-secondary)]">
+            <Spinner className="h-4 w-4 flex-shrink-0" />
+            Review in {walletName || 'wallet'}
+            {walletIcon && <img src={walletIcon} alt="" aria-hidden="true" className="h-4 w-4 rounded-sm flex-shrink-0" />}
+          </div>
+        </div>
+      ) : (
         <div className="px-6 py-4 border-t border-[var(--wui-color-border)] flex gap-3">
           <button
             onClick={onReject}
@@ -225,17 +232,15 @@ export function TransactionReview({
           </button>
           <button
             onClick={onApprove}
-            className="flex-1 py-2.5 px-4 bg-[var(--wui-color-danger-text)] text-[var(--wui-color-danger-button-text)] font-medium rounded-xl hover:brightness-90 transition-all text-sm"
+            className={`flex-1 py-2.5 px-4 font-medium rounded-xl hover:brightness-90 transition-all text-sm flex items-center justify-center gap-2 ${
+              dangerous
+                ? 'bg-[var(--wui-color-danger-text)] text-[var(--wui-color-danger-button-text)]'
+                : 'bg-[var(--wui-color-primary)] text-[var(--wui-color-primary-text)]'
+            }`}
           >
-            Sign (Dangerous)
+            {walletIcon && <img src={walletIcon} alt="" aria-hidden="true" className="h-4 w-4 rounded-sm flex-shrink-0" />}
+            Review
           </button>
-        </div>
-      ) : (
-        <div className="px-6 py-4 border-t border-[var(--wui-color-border)]">
-          <div className="flex items-center gap-2 text-sm text-[var(--wui-color-text-secondary)]">
-            <Spinner className="h-4 w-4 flex-shrink-0" />
-            Review in {walletName || 'wallet'}
-          </div>
         </div>
       )}
     </div>

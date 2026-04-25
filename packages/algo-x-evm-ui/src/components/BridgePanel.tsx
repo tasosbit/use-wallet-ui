@@ -278,6 +278,9 @@ export function BridgePanel({
 }: BridgePanelProps) {
   const bridgeFooterConfig = useNoticeConfig('bridgeFooter')
   const bridgeFooter = bridgeFooterConfig?.kind === 'footer' ? bridgeFooterConfig.text : null
+  const bridgeSignConfig = useNoticeConfig('bridgeSign')
+  const bridgeSignNotice = bridgeSignConfig?.kind === 'info' ? bridgeSignConfig : null
+  const [bridgeSignPending, setBridgeSignPending] = useState(false)
   const sourceChain = chains.find((c) => c.chainSymbol === sourceChainSymbol) ?? null
   const sourceTokens = sourceChain?.tokens ?? []
   const selectedSourceToken = sourceTokens.find((t) => t.symbol === sourceTokenSymbol) ?? null
@@ -522,14 +525,51 @@ export function BridgePanel({
             )}
           </div>
 
-          {/* Bridge button */}
-          <button
-            onClick={onBridge}
-            disabled={!canSubmit}
-            className="w-full py-2.5 px-4 bg-[var(--wui-color-primary)] text-[var(--wui-color-primary-text)] font-medium rounded-xl hover:brightness-90 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Bridge
-          </button>
+          {/* Bridge button (or pre-sign info gate) */}
+          {bridgeSignPending && bridgeSignNotice ? (
+            <div
+              role="dialog"
+              className="w-full flex flex-col gap-3 p-4 rounded-xl border border-[var(--wui-color-border)] bg-[var(--wui-color-bg-secondary)] text-[var(--wui-color-text)]"
+            >
+              {bridgeSignNotice.title ? (
+                <h3 className="text-sm font-semibold">{bridgeSignNotice.title}</h3>
+              ) : null}
+              <div className="text-sm leading-relaxed">{bridgeSignNotice.body}</div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setBridgeSignPending(false)}
+                  className="flex-1 py-2 px-4 bg-[var(--wui-color-bg-tertiary)] text-[var(--wui-color-text)] font-medium rounded-xl hover:brightness-90 transition-all text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBridgeSignPending(false)
+                    onBridge()
+                  }}
+                  className="flex-1 py-2 px-4 bg-[var(--wui-color-primary)] text-[var(--wui-color-primary-text)] font-medium rounded-xl hover:brightness-90 transition-all text-sm"
+                >
+                  Continue
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => {
+                if (bridgeSignNotice) {
+                  setBridgeSignPending(true)
+                } else {
+                  onBridge()
+                }
+              }}
+              disabled={!canSubmit}
+              className="w-full py-2.5 px-4 bg-[var(--wui-color-primary)] text-[var(--wui-color-primary-text)] font-medium rounded-xl hover:brightness-90 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Bridge
+            </button>
+          )}
 
           {bridgeFooter ? (
             <div className="w-full py-2.5 px-4 text-xs text-[var(--wui-color-text-secondary)]">

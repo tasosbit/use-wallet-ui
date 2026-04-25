@@ -6,6 +6,8 @@ import { Spinner } from './Spinner'
 import { useTransactionData } from '../hooks/useTransactionData'
 import type { TransactionData, TransactionDanger, AssetLookupClient } from '../types'
 
+const DOCS_URL = (import.meta.env.VITE_DOCS_URL ?? '').replace(/\/+$/, '')
+
 /** Well-known Algorand network genesis hashes (base64-encoded). */
 const GENESIS_HASH_NETWORK: Record<string, string> = {
   'wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=': 'MainNet',
@@ -146,18 +148,24 @@ export function TransactionReview({
           {transactions.length === 1 ? (
             networkName ? (
               <>
-                Signing <strong>{networkName}</strong> transaction:
+                Signing 1 <strong>{networkName}</strong> transaction
               </>
             ) : (
-              'Signing transaction:'
+              'Signing 1 transaction'
             )
           ) : networkName ? (
             <>
-              Signing {transactions.length} <strong>{networkName}</strong> transactions:
+              Signing {transactions.length} <strong>{networkName}</strong> transactions
             </>
           ) : (
-            `Signing ${transactions.length} transactions:`
-          )}
+            `Signing ${transactions.length} transactions`
+          )}.{" "}
+          <a
+              className="text-[var(--wui-color-link)] hover:text-[var(--wui-color-link-hover)]"
+              rel="noopener noreferrer"
+              target="_blank"
+              href={DOCS_URL ? `${DOCS_URL}/docs/signing-transactions` : 'https://docs.algorand.com/learn/transactions/'}
+            >Learn more</a>
         </div>
       )}
 

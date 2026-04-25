@@ -756,7 +756,7 @@ export function WalletUIProvider({
               <ExtensionSignIndicator transactionCount={pendingSign!.transactions.length} dangerous={pendingSign!.dangerous} onReject={handleRejectSign} />
             )}
             {showSignDialog && !extensionDetected && (
-              <BeforeSignDialog transactions={pendingSign!.transactions} message={pendingSign!.message} dangerous={pendingSign!.dangerous} genesisHash={pendingSign!.genesisHash} genesisID={pendingSign!.genesisID} onApprove={handleApproveSign} onReject={handleRejectSign} signing={signing} walletName={activeWallet?.metadata?.name} walletIcon={activeWallet?.metadata?.icon} algodClient={algodClient} network={activeNetwork} />
+              <BeforeSignDialog transactions={pendingSign!.transactions} message={pendingSign!.message} dangerous={pendingSign!.dangerous} genesisHash={pendingSign!.genesisHash} genesisID={pendingSign!.genesisID} onApprove={handleApproveSign} onReject={handleRejectSign} signing={signing} walletName={(activeWallet?.activeAccount?.metadata?.connectorName as string | undefined) ?? activeWallet?.metadata?.name} walletIcon={(activeWallet?.activeAccount?.metadata?.connectorIcon as string | undefined) ?? activeWallet?.metadata?.icon} algodClient={algodClient} network={activeNetwork} />
             )}
             {pendingWelcome && (
               <WelcomeDialog algorandAddress={pendingWelcome.algorandAddress} evmAddress={pendingWelcome.evmAddress} onDismiss={() => setPendingWelcome(null)} />

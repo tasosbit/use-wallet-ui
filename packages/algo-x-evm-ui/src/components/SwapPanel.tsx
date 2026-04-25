@@ -252,7 +252,7 @@ export function SwapPanel({
       {/* Swap form (hidden during/after transaction) */}
       {status === 'idle' && (
         <>
-          <p className="text-xs text-[var(--wui-color-text-secondary)] mb-2">
+          <p className="text-sm text-[var(--wui-color-text)] mb-2">
             Swap tokens at the best rate across Algorand DEXes
           </p>
 

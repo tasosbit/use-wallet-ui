@@ -381,7 +381,7 @@ export function BridgePanel({
       {/* Form (visible in idle state only) */}
       {!initialLoading && status === 'idle' && chains.length > 0 && (
         <>
-          <p className="text-xs text-[var(--wui-color-text-secondary)] mb-3">
+          <p className="text-sm text-[var(--wui-color-text)] mb-3">
             {sourceIsAlgorand
               ? 'Bridge tokens from Algorand to your EVM accounts using Allbridge'
               : 'Bridge tokens from your EVM accounts using Allbridge'}

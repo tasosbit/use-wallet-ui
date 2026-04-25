@@ -201,7 +201,7 @@ export function SendPanel({
       {status === 'idle' && (
         <>
           {/* Label */}
-          <p className="text-xs text-[var(--wui-color-text-secondary)] mb-2">Send ALGO or assets to any Algorand address</p>
+          <p className="text-sm text-[var(--wui-color-text)] mb-4">Send ALGO or assets to any Algorand address</p>
 
           {/* Available balance */}
           {availableLabel && <p className="self-end text-xs text-[var(--wui-color-text-secondary)] mb-1">{availableLabel}</p>}

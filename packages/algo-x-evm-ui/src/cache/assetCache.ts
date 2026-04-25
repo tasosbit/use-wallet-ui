@@ -95,7 +95,7 @@ function insertMany(assets: CachedAsset[]): Promise<void> {
   })
 }
 
-function searchByName(query: string, limit = 20): Promise<CachedAsset[]> {
+function searchByName(query: string, limit = 1000): Promise<CachedAsset[]> {
   const q = query.toLowerCase()
   return open().then(
     (db) =>

@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query'
 import { useWallet, useWalletManager, useNetwork } from '@txnlab/use-wallet-react'
 import algosdk from 'algosdk'
-import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { createContext, ReactNode, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
 import { BeforeSignDialog } from '../components/BeforeSignDialog'
 import { BridgeDialog } from '../components/BridgeDialog'
@@ -15,6 +15,7 @@ import { NoticeProvider, type NoticesConfig } from '@d13co/algo-x-evm-ui'
 
 import type { NfdLookupResponse, NfdView } from '../hooks/useNfd'
 import type { UseSwapOptions } from '../hooks/useSwap'
+import { buildHaystackSwapOptions, type SwapRouterLike } from '../utils/useHaystackSwapConfig'
 import { AlgoXEvmSdk } from 'algo-x-evm-sdk'
 
 // Extension message constants (duplicated from extension package to avoid cross-dependency)
@@ -260,9 +261,18 @@ interface WalletUIProviderProps {
    * the `<WalletButton />` menu. Typically produced by wiring up a router SDK
    * (e.g. `@txnlab/haystack-router`) to expose `fetchQuote` and `executeSwap`.
    *
-   * If omitted, the Swap tab is hidden.
+   * If omitted, the Swap tab is hidden — unless `swapRouter` is provided, in
+   * which case WalletUIProvider builds this internally.
    */
   swap?: UseSwapOptions
+  /**
+   * Haystack-compatible swap router (e.g. a `RouterClient` instance from
+   * `@txnlab/haystack-router`). When provided, WalletUIProvider reads
+   * `signTransactions` from the surrounding `<WalletProvider>` and builds the
+   * `UseSwapOptions` closure internally — no manual wiring needed. If a `swap`
+   * prop is also passed, it takes precedence.
+   */
+  swapRouter?: SwapRouterLike
 }
 
 // Default query client configuration for NFD queries
@@ -436,7 +446,27 @@ export function WalletUIProvider({
   wagmiConfig,
   notices,
   swap,
+  swapRouter,
 }: WalletUIProviderProps) {
+  // Auto-wire swap options from `swapRouter` + wallet signer. Stabilise
+  // `signTransactions` via a ref so the built config is stable across renders
+  // (only changes when `swapRouter` changes); the ref is read at executeSwap
+  // invocation time so the latest signer is always used.
+  const { signTransactions } = useWallet()
+  const signTransactionsRef = useRef(signTransactions)
+  useLayoutEffect(() => {
+    signTransactionsRef.current = signTransactions
+  }, [signTransactions])
+  const autoSwap = useMemo<UseSwapOptions | undefined>(
+    () =>
+      swapRouter
+        ? buildHaystackSwapOptions(swapRouter, ((group, indexes) =>
+            signTransactionsRef.current(group, indexes)) as typeof signTransactions)
+        : undefined,
+    [swapRouter],
+  )
+  const effectiveSwap = swap ?? autoSwap
+
   // Auto-create RainbowKit config from wagmiConfig when rainbowkit prop isn't provided.
   // Uses dynamic import so wagmi/@rainbow-me/rainbowkit remain truly optional peer deps.
   const [autoRainbowkit, setAutoRainbowkit] = useState<RainbowKitUIConfig | null>(null)
@@ -694,9 +724,9 @@ export function WalletUIProvider({
       requestBeforeSign,
       requestAfterSign,
       requestWelcome,
-      swap,
+      swap: effectiveSwap,
     }),
-    [queryClient, theme, resolvedTheme, requestBeforeSign, requestAfterSign, requestWelcome, swap],
+    [queryClient, theme, resolvedTheme, requestBeforeSign, requestAfterSign, requestWelcome, effectiveSwap],
   )
 
   // Determine the data-theme attribute value

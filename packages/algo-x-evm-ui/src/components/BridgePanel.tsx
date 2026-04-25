@@ -130,8 +130,11 @@ function formatShortAddr(addr: string): string {
 /** Displays a transaction ID with a copy button */
 function TxLine({ label, txId }: { label: string; txId: string }) {
   return (
-    <p className="text-xs text-[var(--wui-color-text-secondary)] flex items-center justify-center gap-1">
-      {label}: <span className="font-mono">{formatShortAddr(txId)}</span>
+    <p className="text-xs text-[var(--wui-color-text-secondary)] flex items-center justify-center">
+      <span className="inline-flex items-baseline gap-1">
+        <span>{label}:</span>
+        <span className="font-mono">{formatShortAddr(txId)}</span>
+      </span>
       <CopyButton text={txId} variant="icon" title={`Copy ${label.toLowerCase()}`} />
     </p>
   )
@@ -564,22 +567,24 @@ export function BridgePanel({
             </div>
           )}
           {destinationTxId && (
-            <p className="mt-1 text-xs text-[var(--wui-color-text-secondary)] flex items-center justify-center gap-1">
-              Destination TX:{' '}
-              {destinationChainSymbol === 'ALG' ? (
-                <a
-                  href={`https://allo.info/tx/${destinationTxId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-mono text-[var(--wui-color-primary)] hover:underline"
-                >
-                  {formatShortAddr(destinationTxId)}
-                </a>
-              ) : (
-                <>
+            <p className="mt-1 text-xs text-[var(--wui-color-text-secondary)] flex items-center justify-center">
+              <span className="inline-flex items-baseline gap-1">
+                <span>Destination TX:</span>
+                {destinationChainSymbol === 'ALG' ? (
+                  <a
+                    href={`https://allo.info/tx/${destinationTxId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-mono text-[var(--wui-color-primary)] hover:underline"
+                  >
+                    {formatShortAddr(destinationTxId)}
+                  </a>
+                ) : (
                   <span className="font-mono">{formatShortAddr(destinationTxId)}</span>
-                  <CopyButton text={destinationTxId} variant="icon" title="Copy destination transaction ID" />
-                </>
+                )}
+              </span>
+              {destinationChainSymbol !== 'ALG' && (
+                <CopyButton text={destinationTxId} variant="icon" title="Copy destination transaction ID" />
               )}
             </p>
           )}
@@ -760,7 +765,7 @@ function BridgeProgress({
 
       {explorerAddress && (
         <div className="flex items-center justify-center text-xs mt-3">
-          <AllbridgeExplorerLink address={explorerAddress} muted>
+          <AllbridgeExplorerLink address={explorerAddress}>
             View on Allbridge
           </AllbridgeExplorerLink>
         </div>

@@ -13,6 +13,7 @@ import {
   unichain,
   linea,
 } from 'wagmi/chains'
+import { algorandChain } from 'algo-x-evm-sdk'
 
 import {
   safeWallet,
@@ -111,6 +112,10 @@ function clearStaleWcPairings(): void {
  *   URLs used by the Allbridge SDK, so wagmi/viem reads don't fall back to
  *   viem's default RPCs (e.g. `eth.merkle.io`). Override per-chain via
  *   `params.transports`.
+ * - Sets a default `http()` transport for `algorandChain.id`, which falls
+ *   back to `algorandChain.rpcUrls.default.http[0]`. This keeps wagmi's
+ *   `extractRpcUrls` working when a connector (e.g. MetaMask) is on
+ *   algorandChain. Override via `params.transports`.
  * - Sets `walletConnectParameters.metadata.redirect.universal` to the current
  *   origin so that MetaMask Mobile redirects back to the browser tab after
  *   signing, allowing the WalletConnect relay response to be delivered.
@@ -180,7 +185,11 @@ export const getDefaultConfig = (params: Parameters<typeof rkGetDefaultConfig>[0
   // Caller transports win over bridge defaults so users can swap in their own
   // RPCs (e.g. Alchemy/Infura keys) per chain.
   const userTransports = (p.transports ?? {}) as Record<number, Transport>
-  const transports = { ...BRIDGE_TRANSPORTS, ...userTransports }
+  const transports = {
+    ...BRIDGE_TRANSPORTS,
+    [algorandChain.id]: http(),
+    ...userTransports,
+  }
 
   const config = rkGetDefaultConfig({
     wallets: DEFAULT_WALLETS,

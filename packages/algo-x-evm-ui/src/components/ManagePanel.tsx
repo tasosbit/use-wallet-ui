@@ -381,13 +381,13 @@ export function ManagePanel({
         <ArrowDownLeft className="h-4 w-4 mr-1.5" />
         Receive
       </button>
-      <button onClick={onBridgeClick ?? (() => { onBridgeEnter?.(); goForward('bridge') })} disabled={!bridge && !onBridgeClick} className={actionBtnClass}>
-        <ArrowsExchange className="h-4 w-4 mr-1.5" />
-        Bridge
-      </button>
       <button onClick={() => goForward('swap')} disabled={!swap} className={actionBtnClass}>
         <ArrowsUpDown className="h-4 w-4 mr-1.5" />
         Swap
+      </button>
+      <button onClick={onBridgeClick ?? (() => { onBridgeEnter?.(); goForward('bridge') })} disabled={!bridge && !onBridgeClick} className={actionBtnClass}>
+        <ArrowsExchange className="h-4 w-4 mr-1.5" />
+        Bridge
       </button>
       <button onClick={onExplore} disabled={!onExplore} className={actionBtnClass}>
         <Search className="h-4 w-4 mr-1.5" />
@@ -560,13 +560,13 @@ export function ManagePanel({
                 <ArrowDownLeft className="h-4 w-4 mr-1.5" />
                 Receive
               </button>
-              <button onClick={onBridgeClick ?? (() => { onBridgeEnter?.(); goForward('bridge') })} disabled={!bridge && !onBridgeClick} className={sideActionBtnClass('bridge')}>
-                <ArrowsExchange className="h-4 w-4 mr-1.5" />
-                Bridge
-              </button>
               <button onClick={() => goForward('swap')} disabled={!swap} className={sideActionBtnClass('swap')}>
                 <ArrowsUpDown className="h-4 w-4 mr-1.5" />
                 Swap
+              </button>
+              <button onClick={onBridgeClick ?? (() => { onBridgeEnter?.(); goForward('bridge') })} disabled={!bridge && !onBridgeClick} className={sideActionBtnClass('bridge')}>
+                <ArrowsExchange className="h-4 w-4 mr-1.5" />
+                Bridge
               </button>
               <button onClick={onExplore} disabled={!onExplore} className={`wui-side-btn w-full py-2.5 px-4 font-medium rounded-xl transition-all text-sm flex items-center justify-center disabled:opacity-40 disabled:pointer-events-none bg-[var(--wui-color-bg-tertiary)] text-[var(--wui-color-text)] hover:brightness-90`}>
                 <Search className="h-4 w-4 mr-1.5" />

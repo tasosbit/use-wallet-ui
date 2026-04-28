@@ -20,7 +20,7 @@ export const DEFAULT_RPC_URLS: NodeRpcUrls = {
   ETH: 'https://eth.drpc.org',
   BSC: 'https://bsc.drpc.org',
   POL: 'https://polygon.drpc.org',
-  ARB: 'https://arbitrum.drpc.org',
+  ARB: 'https://arb1.arbitrum.io/rpc',
   OPT: 'https://optimism.drpc.org',
   AVA: 'https://avalanche.drpc.org',
   BAS: 'https://base.drpc.org',

@@ -88,7 +88,7 @@ export const MixedDangerousGroup: Story = {
 export const TwoAssetClosings: Story = {
   args: {
     transactions: mocks.twoAssetClosingsGroup(),
-    dangerous: ['closeTo'],
+    dangerous: ['closeTo', 'closeTo'],
     algodClient: mockAlgodClient,
     genesisHash: TESTNET_GENESIS_HASH,
   },

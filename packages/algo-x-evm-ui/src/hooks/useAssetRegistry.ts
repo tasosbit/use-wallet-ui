@@ -26,6 +26,7 @@ export interface UseAssetRegistryReturn {
 export function useAssetRegistry(
   algodClient: algosdk.Algodv2 | null | undefined,
   activeNetwork: string | undefined,
+  indexerClient?: algosdk.Indexer,
 ): UseAssetRegistryReturn {
   const [registryLoading, setRegistryLoading] = useState(false)
   const [registryLoaded, setRegistryLoaded] = useState(false)
@@ -110,6 +111,26 @@ export function useAssetRegistry(
 
   const searchByName = useCallback(
     async (query: string, limit?: number) => {
+      if (!isMainnet && indexerClient) {
+        const [byName, byUnit] = await Promise.all([
+          indexerClient.searchForAssets().name(query).limit(limit ?? 20).do().catch(() => ({ assets: [] })),
+          indexerClient.searchForAssets().unit(query).limit(limit ?? 20).do().catch(() => ({ assets: [] })),
+        ])
+        const seen = new Set<number>()
+        return [...byName.assets, ...byUnit.assets].flatMap((a) => {
+          const id = Number(a.index)
+          if (seen.has(id)) return []
+          seen.add(id)
+          return [{ 
+            index: id, 
+            name: a.params.name || 'Unnamed Asset', 
+            unitName: a.params.unitName || '',
+            decimals: a.params.decimals, 
+            peraVerified: false
+          }]
+        })
+      }
+
       const q = query.trim().toLowerCase()
       const canonicalId = isMainnet ? CANONICAL_MAINNET_ASSETS[q] : undefined
 
@@ -121,7 +142,7 @@ export function useAssetRegistry(
 
       return AssetCache.searchByName(query, limit)
     },
-    [isMainnet],
+    [isMainnet, indexerClient],
   )
 
   return { registryLoading, registryLoaded, registryError, searchByName }

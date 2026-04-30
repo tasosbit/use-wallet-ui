@@ -199,6 +199,219 @@ export function largePaymentGroup(): TransactionData[] {
   }))
 }
 
+export function threeStackedDangerousGroup(): TransactionData[] {
+  const group = 'dGhyZWVzdGFja2VkZGFuZ2Vy'
+  return [
+    {
+      index: 0,
+      type: 'pay',
+      typeLabel: 'Payment',
+      sender: ADDR_ALICE,
+      senderShort: SHORT_ALICE,
+      receiver: ADDR_ALICE,
+      receiverShort: SHORT_ALICE,
+      amount: '0 ALGO',
+      rawAmount: '0',
+      rekeyTo: ADDR_MALLORY,
+      rekeyToShort: SHORT_MALLORY,
+      group,
+      ...commonFields,
+    },
+    {
+      index: 1,
+      type: 'axfer',
+      typeLabel: 'Asset Transfer',
+      sender: ADDR_ALICE,
+      senderShort: SHORT_ALICE,
+      receiver: ADDR_BOB,
+      receiverShort: SHORT_BOB,
+      amount: '0',
+      rawAmount: '0',
+      assetIndex: 31566704,
+      closeRemainderTo: ADDR_BOB,
+      closeRemainderToShort: SHORT_BOB,
+      group,
+      ...commonFields,
+    },
+    {
+      index: 2,
+      type: 'pay',
+      typeLabel: 'Payment',
+      sender: ADDR_ALICE,
+      senderShort: SHORT_ALICE,
+      receiver: ADDR_BOB,
+      receiverShort: SHORT_BOB,
+      amount: '0 ALGO',
+      rawAmount: '0',
+      closeRemainderTo: ADDR_BOB,
+      closeRemainderToShort: SHORT_BOB,
+      group,
+      ...commonFields,
+    },
+  ]
+}
+
+export function mixedDangerousGroup(): TransactionData[] {
+  const group = 'ZGFuZ2Vybm9ybWFsZGFuZ2Vy'
+  return [
+    {
+      index: 0,
+      type: 'pay',
+      typeLabel: 'Payment',
+      sender: ADDR_ALICE,
+      senderShort: SHORT_ALICE,
+      receiver: ADDR_ALICE,
+      receiverShort: SHORT_ALICE,
+      amount: '0 ALGO',
+      rawAmount: '0',
+      rekeyTo: ADDR_MALLORY,
+      rekeyToShort: SHORT_MALLORY,
+      group,
+      ...commonFields,
+    },
+    {
+      index: 1,
+      type: 'pay',
+      typeLabel: 'Payment',
+      sender: ADDR_ALICE,
+      senderShort: SHORT_ALICE,
+      receiver: ADDR_BOB,
+      receiverShort: SHORT_BOB,
+      amount: '5 ALGO',
+      rawAmount: '5000000',
+      group,
+      ...commonFields,
+    },
+    {
+      index: 2,
+      type: 'axfer',
+      typeLabel: 'Asset Transfer',
+      sender: ADDR_ALICE,
+      senderShort: SHORT_ALICE,
+      receiver: ADDR_BOB,
+      receiverShort: SHORT_BOB,
+      amount: '0',
+      rawAmount: '0',
+      assetIndex: 31566704,
+      closeRemainderTo: ADDR_BOB,
+      closeRemainderToShort: SHORT_BOB,
+      group,
+      ...commonFields,
+    },
+  ]
+}
+
+export function twoAssetClosingsGroup(): TransactionData[] {
+  const group = 'dHdvQXNzZXRDbG9zZXM='
+  return [
+    {
+      index: 0,
+      type: 'axfer',
+      typeLabel: 'Asset Transfer',
+      sender: ADDR_ALICE,
+      senderShort: SHORT_ALICE,
+      receiver: ADDR_BOB,
+      receiverShort: SHORT_BOB,
+      amount: '0',
+      rawAmount: '0',
+      assetIndex: 31566704,
+      closeRemainderTo: ADDR_BOB,
+      closeRemainderToShort: SHORT_BOB,
+      group,
+      ...commonFields,
+    },
+    {
+      index: 1,
+      type: 'axfer',
+      typeLabel: 'Asset Transfer',
+      sender: ADDR_ALICE,
+      senderShort: SHORT_ALICE,
+      receiver: ADDR_BOB,
+      receiverShort: SHORT_BOB,
+      amount: '0',
+      rawAmount: '0',
+      assetIndex: 312769,
+      closeRemainderTo: ADDR_BOB,
+      closeRemainderToShort: SHORT_BOB,
+      group,
+      ...commonFields,
+    },
+  ]
+}
+
+export function optOutAndClose(): TransactionData[] {
+  const group = 'dHdvY2xvc2luZ3NncnA='
+  return [
+    {
+      index: 0,
+      type: 'pay',
+      typeLabel: 'Payment',
+      sender: ADDR_ALICE,
+      senderShort: SHORT_ALICE,
+      receiver: ADDR_BOB,
+      receiverShort: SHORT_BOB,
+      amount: '0 ALGO',
+      rawAmount: '0',
+      closeRemainderTo: ADDR_BOB,
+      closeRemainderToShort: SHORT_BOB,
+      group,
+      ...commonFields,
+    },
+    {
+      index: 1,
+      type: 'axfer',
+      typeLabel: 'Asset Transfer',
+      sender: ADDR_ALICE,
+      senderShort: SHORT_ALICE,
+      receiver: ADDR_BOB,
+      receiverShort: SHORT_BOB,
+      amount: '0',
+      rawAmount: '0',
+      assetIndex: 31566704,
+      closeRemainderTo: ADDR_BOB,
+      closeRemainderToShort: SHORT_BOB,
+      group,
+      ...commonFields,
+    },
+  ]
+}
+
+export function rekeyAndCloseTransaction(): TransactionData[] {
+  const group = 'cmVrZXlhbmRjbG9zZWdyb3Vw'
+  return [
+    {
+      index: 0,
+      type: 'pay',
+      typeLabel: 'Payment',
+      sender: ADDR_ALICE,
+      senderShort: SHORT_ALICE,
+      receiver: ADDR_ALICE,
+      receiverShort: SHORT_ALICE,
+      amount: '0 ALGO',
+      rawAmount: '0',
+      rekeyTo: ADDR_MALLORY,
+      rekeyToShort: SHORT_MALLORY,
+      group,
+      ...commonFields,
+    },
+    {
+      index: 1,
+      type: 'pay',
+      typeLabel: 'Payment',
+      sender: ADDR_ALICE,
+      senderShort: SHORT_ALICE,
+      receiver: ADDR_BOB,
+      receiverShort: SHORT_BOB,
+      amount: '0 ALGO',
+      rawAmount: '0',
+      closeRemainderTo: ADDR_BOB,
+      closeRemainderToShort: SHORT_BOB,
+      group,
+      ...commonFields,
+    },
+  ]
+}
+
 export function mixedGroup(): TransactionData[] {
   const group = 'bWl4ZWRncm91cGlkYmFzZTY0ZW5jb2Rl'
   return [

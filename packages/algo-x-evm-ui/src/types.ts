@@ -64,7 +64,7 @@ export interface TransactionData {
   assetSender?: string
 }
 
-export type TransactionDanger = 'rekey' | 'closeTo' | false
+export type TransactionDanger = ('rekey' | 'closeTo')[] | false
 
 export interface AssetInfo {
   decimals: number

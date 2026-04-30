@@ -137,7 +137,13 @@ export function TransactionReview({
                   return `This transaction will transfer all available ${unit} to another address. Confirm that this is what you intended.`
                 }
                 return 'This transaction will transfer all available ALGO to another address. Confirm that this is what you intended.'
-              })()}
+              })()}{' '}
+          <a
+            className="underline font-normal"
+            rel="noopener noreferrer"
+            target="_blank"
+            href={`${DOCS_URL}/signing-transactions#dangerous-transactions`}
+          >Learn more</a>
         </div>
       ) : (
         <div className="px-6 pb-3 text-sm text-[var(--wui-color-text-secondary)]">

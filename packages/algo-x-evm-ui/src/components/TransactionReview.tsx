@@ -106,6 +106,46 @@ export function TransactionReview({
     )
   }
 
+  /** 
+   * When only one dangerous transaction, show full text. 
+   * When multiple dangerous txs are stacked, show shorter text versions with bullets. 
+   */
+  function renderDangerText() {
+    if (!dangerous) return null
+    const closeAssetTxns = transactions.filter((t) => t.closeRemainderTo && t.type === 'axfer')
+
+    if (dangerous.length > 1) {
+      const closeAlgoTxn = transactions.find((t) => t.closeRemainderTo && t.type === 'pay')
+      return (
+        <>
+          This group contains multiple dangerous operations:
+          <ul className="mt-1 mb-1 pl-2 list-disc list-inside font-normal space-y-0.5">
+            {dangerous.includes('rekey') && <li>Rekey: transfer signing authority to a different address.</li>}
+            {closeAlgoTxn && <li>Close account: transfer all ALGO balance to another address.</li>}
+            {closeAssetTxns.map((t) => {
+              const info = t.assetIndex ? assets[t.assetIndex.toString()] : undefined
+              const unit = info?.unitName || info?.name
+              return <li key={t.index}>Close asset{unit ? ` ${unit}` : ''}: transfer all balance to another address.</li>
+            })}
+          </ul>
+          Confirm that this is what you intended.
+        </>
+      )
+    }
+
+    if (dangerous[0] === 'rekey') {
+      return 'This transaction will rekey your account, transferring signing authority to a different address. You will no longer be able to sign transactions with your current key.'
+    }
+
+    if (closeAssetTxns[0]) {
+      const info = closeAssetTxns[0].assetIndex ? assets[closeAssetTxns[0].assetIndex.toString()] : undefined
+      const unit = info?.unitName || info?.name || 'balance'
+      return `This transaction will transfer all available ${unit} to another address. Confirm that this is what you intended.`
+    }
+
+    return 'This transaction will transfer all ALGO balance to another address. Confirm that this is what you intended.'
+  }
+
   // List view — default
   return (
     <div
@@ -127,17 +167,13 @@ export function TransactionReview({
       {/* Danger description */}
       {dangerous ? (
         <div className="px-6 pb-3 text-sm font-bold text-[var(--wui-color-danger-text)]">
-          {dangerous === 'rekey'
-            ? 'This transaction will rekey your account, transferring signing authority to a different address. You will no longer be able to sign transactions with your current key.'
-            : (() => {
-                const closeTxn = transactions.find((t) => t.closeRemainderTo)
-                if (closeTxn?.type === 'axfer' && closeTxn.assetIndex) {
-                  const info = assets[closeTxn.assetIndex.toString()]
-                  const unit = info?.unitName || info?.name || 'this asset'
-                  return `This transaction will transfer all available ${unit} to another address. Confirm that this is what you intended.`
-                }
-                return 'This transaction will transfer all available ALGO to another address. Confirm that this is what you intended.'
-              })()}
+          {renderDangerText()}{' '}
+          <a
+            className="underline font-normal text-inherit"
+            rel="noopener noreferrer"
+            target="_blank"
+            href={`${DOCS_URL}/signing-transactions#dangerous-transactions`}
+          >Learn more</a>
         </div>
       ) : (
         <div className="px-6 pb-3 text-sm text-[var(--wui-color-text-secondary)]">

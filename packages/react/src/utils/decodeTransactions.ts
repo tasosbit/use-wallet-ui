@@ -71,7 +71,7 @@ const TYPE_LABELS: Record<string, string> = {
   hb: 'Heartbeat',
 }
 
-export type TransactionDanger = 'rekey' | 'closeTo' | false
+export type TransactionDanger = ('rekey' | 'closeTo')[] | false
 
 function tryDecodeTxn(bytes: Uint8Array): algosdk.Transaction | null {
   try {
@@ -99,7 +99,7 @@ export function decodeTransactions(
 ): { transactions: algosdk.Transaction[]; decodedTransactions: DecodedTransaction[]; dangerous: TransactionDanger; genesisHash: string | null; genesisID: string | null } {
   const result: DecodedTransaction[] = []
   const transactions: algosdk.Transaction[] = []
-  let dangerous: TransactionDanger = false
+  const dangerousList: Exclude<TransactionDanger, false> = []
   let genesisHash: string | null = null
   let genesisID: string | null = null
 
@@ -114,7 +114,7 @@ export function decodeTransactions(
     }
 
     if (txn?.rekeyTo) {
-      dangerous = 'rekey'
+      dangerousList.push('rekey')
     }
 
     if (!txn) continue
@@ -144,7 +144,7 @@ export function decodeTransactions(
         const closeToStr = txn.payment.closeRemainderTo.toString()
         decoded.closeRemainderTo = closeToStr
         decoded.closeRemainderToShort = formatShortAddress(closeToStr, 4, 4)
-        dangerous = 'closeTo'
+        dangerousList.push('closeTo')
       }
     }
 
@@ -159,7 +159,7 @@ export function decodeTransactions(
         const closeToStr = txn.assetTransfer.closeRemainderTo.toString()
         decoded.closeRemainderTo = closeToStr
         decoded.closeRemainderToShort = formatShortAddress(closeToStr, 4, 4)
-        dangerous = 'closeTo'
+        dangerousList.push('closeTo')
       }
     }
 
@@ -255,5 +255,6 @@ export function decodeTransactions(
     transactions.push(txn)
   }
 
+  const dangerous: TransactionDanger = dangerousList.length > 0 ? dangerousList : false
   return { transactions, decodedTransactions: result, dangerous, genesisHash, genesisID }
 }

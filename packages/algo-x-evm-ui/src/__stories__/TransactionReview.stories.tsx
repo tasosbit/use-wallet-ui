@@ -44,7 +44,7 @@ export const GroupOfTwoPayments: Story = {
 export const RekeyTransaction: Story = {
   args: {
     transactions: mocks.rekeyTransaction(),
-    dangerous: 'rekey',
+    dangerous: ['rekey'],
     genesisHash: TESTNET_GENESIS_HASH,
   },
 }
@@ -52,7 +52,44 @@ export const RekeyTransaction: Story = {
 export const CloseOutTransaction: Story = {
   args: {
     transactions: mocks.closeOutTransaction(),
-    dangerous: 'closeTo',
+    dangerous: ['closeTo'],
+    genesisHash: TESTNET_GENESIS_HASH,
+  },
+}
+
+const mockAlgodClient = {
+  getAssetByID: (id: number) => ({
+    do: async () => {
+      if (id === 31566704) return { params: { decimals: 6, name: 'USD Coin', unitName: 'USDC' } }
+      if (id === 312769) return { params: { decimals: 6, name: 'Tether USDt', unitName: 'USDt' } }
+      return { params: { decimals: 0 } }
+    },
+  }),
+}
+
+export const ThreeStackedDangerous: Story = {
+  args: {
+    transactions: mocks.threeStackedDangerousGroup(),
+    dangerous: ['rekey', 'closeTo'],
+    algodClient: mockAlgodClient,
+    genesisHash: TESTNET_GENESIS_HASH,
+  },
+}
+
+export const MixedDangerousGroup: Story = {
+  args: {
+    transactions: mocks.mixedDangerousGroup(),
+    dangerous: ['rekey', 'closeTo'],
+    algodClient: mockAlgodClient,
+    genesisHash: TESTNET_GENESIS_HASH,
+  },
+}
+
+export const TwoAssetClosings: Story = {
+  args: {
+    transactions: mocks.twoAssetClosingsGroup(),
+    dangerous: ['closeTo', 'closeTo'],
+    algodClient: mockAlgodClient,
     genesisHash: TESTNET_GENESIS_HASH,
   },
 }

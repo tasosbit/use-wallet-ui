@@ -612,7 +612,7 @@ export function useBridgePanel(wallet: BridgeWalletAdapter, options: UseBridgeOp
         // Only relevant when destination is Algorand (EVM→ALG direction).
         let extraGasFloat: string | null = null
         let extraGasAlgoValue: string | null = null
-        if (!sourceIsAlgorand && algorandAddress && algodClient) {
+        if (!cancelled && !sourceIsAlgorand && algorandAddress && algodClient) {
           let needsExtraGas = false
           let isZeroBalance = false
           try {
@@ -645,6 +645,9 @@ export function useBridgePanel(wallet: BridgeWalletAdapter, options: UseBridgeOp
                 if (gasAmountMaxFloat > 0) {
                   const algoAmount = (raw / maxFloat) * gasAmountMaxFloat + (isZeroBalance ? 0.2 : 0)
                   extraGasAlgoValue = `~${algoAmount.toFixed(3)} ALGO`
+                  // Implicit rate comes entirely from Allbridge's limit endpoints (trust assumption)
+                  const implicitAlgoPrice = (maxFloat / gasAmountMaxFloat).toFixed(6)
+                  console.log("[useBridgePanel] implicit ALGO/USD price for extra gas:", implicitAlgoPrice)
                 }
               }
             } catch (err) {
@@ -1720,6 +1723,7 @@ export function useBridgePanel(wallet: BridgeWalletAdapter, options: UseBridgeOp
     gasFeeLoading,
     gasFeeUnit,
     extraGasAlgo,
+    totalFee,
     evmAddress,
     algorandAddress,
     estimatedTimeMs,

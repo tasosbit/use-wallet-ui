@@ -192,6 +192,17 @@ function formatTokenBalance(rawBalance: string, decimals: number): string {
   return f ? `${withCommas}.${f}` : withCommas
 }
 
+/** Format a decimal fee string to a human-readable number with up to 6 decimal places */
+function formatFeeDisplay(fee: string | null): string | null {
+  if (fee == null) return null
+  const value = parseFloat(fee)
+  if (isNaN(value)) return fee
+  const [, decimals = ''] = fee.split('.')
+  if (decimals.length <= 6) return fee.replace(/\.?0+$/, '')
+  const formatted = value.toFixed(6).replace(/\.?0+$/, '')
+  return value > 0 && formatted === '0' ? '<0.000001' : formatted
+}
+
 /** Get a display label for a chain, appending token balance if available */
 function chainOptionLabel(chain: BridgeChainDisplay): string {
   // Find the first token with a non-zero balance to show
@@ -297,7 +308,9 @@ export function BridgePanel({
 
   const parsedAmount = amount ? parseFloat(amount) : 0
   const insufficientFunds = sourceBalanceFloat != null && parsedAmount > 0 && parsedAmount > sourceBalanceFloat
-  const networkFeeDisplay = totalFee ?? (gasFee ? `~${gasFee}` : gasFee)
+  const formattedTotalFee = formatFeeDisplay(totalFee)
+  const formattedGasFee = formatFeeDisplay(gasFee)
+  const networkFeeDisplay = formattedTotalFee ?? (formattedGasFee ? `~${formattedGasFee}` : null)
 
   const isProcessing =
     status === 'permit-signing' ||

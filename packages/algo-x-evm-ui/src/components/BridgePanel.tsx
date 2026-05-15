@@ -72,11 +72,14 @@ export interface BridgePanelProps {
   quoteLoading: boolean
 
   // Fee
+  /** Allbridge's relayer fee */
   gasFee: string | null
   gasFeeLoading: boolean
   gasFeeUnit: string | null
   /** Approximate ALGO the user will receive from extra gas (e.g. "~0.123 ALGO") */
   extraGasAlgo: string | null
+  /** Effective fee the user will pay for the complete bridge operation: relayer fee + liquidity provider fee. */
+  totalFee: string | null
 
   // Addresses
   evmAddress: string | null
@@ -255,6 +258,7 @@ export function BridgePanel({
   gasFeeLoading,
   gasFeeUnit,
   extraGasAlgo,
+  totalFee,
   evmAddress,
   algorandAddress,
   estimatedTimeMs,
@@ -293,6 +297,7 @@ export function BridgePanel({
 
   const parsedAmount = amount ? parseFloat(amount) : 0
   const insufficientFunds = sourceBalanceFloat != null && parsedAmount > 0 && parsedAmount > sourceBalanceFloat
+  const networkFeeDisplay = totalFee ?? (gasFee ? `~${gasFee}` : gasFee)
 
   const isProcessing =
     status === 'permit-signing' ||
@@ -509,11 +514,11 @@ export function BridgePanel({
                 <span className="text-[var(--wui-color-text-secondary)]">{extraGasAlgo}</span>
               </div>
             )}
-            {(gasFee || gasFeeLoading) && (
+            {(gasFee || totalFee || gasFeeLoading) && (
               <div className="flex justify-between items-center text-xs">
                 <span className="text-[var(--wui-color-text-secondary)]">Network fee</span>
                 <span className="text-[var(--wui-color-text-secondary)]">
-                  {gasFeeLoading ? <Spinner className="h-2.5 w-2.5 inline" /> : `${gasFee}${gasFeeUnit ? ` ${gasFeeUnit}` : ''}`}
+                  {gasFeeLoading ? <Spinner className="h-2.5 w-2.5 inline" /> : `${networkFeeDisplay}${gasFeeUnit ? ` ${gasFeeUnit}` : ''}`}
                 </span>
               </div>
             )}

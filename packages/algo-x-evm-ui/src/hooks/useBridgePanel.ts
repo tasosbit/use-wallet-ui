@@ -112,11 +112,14 @@ export interface UseBridgePanelReturn {
   quoteLoading: boolean
 
   // Fee
+  /** Allbridge's relayer fee */
   gasFee: string | null
   gasFeeLoading: boolean
   gasFeeUnit: string | null
   /** Approximate ALGO the user will receive from extra gas conversion (e.g. "~0.123 ALGO") */
   extraGasAlgo: string | null
+  /** Effective fee of the bridge operation: relayer fee + liquidity provider fee. */
+  totalFee: string | null
 
   // Addresses
   evmAddress: string | null
@@ -258,6 +261,7 @@ export function useBridgePanel(wallet: BridgeWalletAdapter, options: UseBridgeOp
   const [extraGasAmount, setExtraGasAmount] = useState<string | null>(null)
   // Approximate ALGO received from extra gas conversion (e.g. "~0.123 ALGO")
   const [extraGasAlgo, setExtraGasAlgo] = useState<string | null>(null)
+  const [totalFee, setTotalFee] = useState<string | null>(null)
 
   // Transfer state
   const [status, setStatus] = useState<BridgeStatus>('idle')
@@ -720,6 +724,7 @@ export function useBridgePanel(wallet: BridgeWalletAdapter, options: UseBridgeOp
     const dst = resolveDestSdkToken()
     if (!sdk || !src || !dst || !amount || parseFloat(amount) <= 0) {
       setReceivedAmount(null)
+      setTotalFee(null)
       return
     }
 
@@ -728,6 +733,7 @@ export function useBridgePanel(wallet: BridgeWalletAdapter, options: UseBridgeOp
     // and displays an inflated "You receive" value.
     if (gasFeeLoading) {
       setReceivedAmount(null)
+      setTotalFee(null)
       return
     }
 
@@ -739,6 +745,7 @@ export function useBridgePanel(wallet: BridgeWalletAdapter, options: UseBridgeOp
       const net = parseFloat(amount) - parseFloat(gasFee) - extra
       if (net <= 0) {
         setReceivedAmount(null)
+        setTotalFee(null)
         return
       }
       // Cap decimals to source token precision (e.g. 6 for USDC) to avoid
@@ -753,10 +760,28 @@ export function useBridgePanel(wallet: BridgeWalletAdapter, options: UseBridgeOp
       try {
         const { Messenger } = await import('@allbridge/bridge-core-sdk')
         const result = await getQuote(sdk, quoteAmount, src, dst, Messenger.ALLBRIDGE)
-        if (!cancelled) setReceivedAmount(result)
+        if (!cancelled) {
+          setReceivedAmount(result)
+          // LP fee is not returned separately, it's implicit in getQuote return value.
+          // See: https://docs-core.allbridge.io/product/how-does-allbridge-core-work/fees#pool-based-transfers
+          const lpFee = parseFloat(quoteAmount) - parseFloat(result)
+          const effectiveFee = parseFloat(gasFee ?? '0') + lpFee
+          const totalFeeValue = effectiveFee.toFixed(src.decimals)
+          setTotalFee(totalFeeValue)
+          const feeLog = {
+            relayer: gasFee,
+            lp: lpFee.toFixed(src.decimals),
+            lpPercentage: `${((lpFee / (parseFloat(quoteAmount) + parseFloat(gasFee ?? '0'))) * 100).toFixed(2)}%`,
+            total: totalFeeValue,
+          }
+          console.log('[useBridgePanel] fees', feeLog)
+        }
       } catch (err) {
         console.error('[useBridgePanel] Quote calculation error:', err)
-        if (!cancelled) setReceivedAmount(null)
+        if (!cancelled) {
+          setReceivedAmount(null)
+          setTotalFee(null)
+        }
       } finally {
         if (!cancelled) setQuoteLoading(false)
       }
@@ -963,6 +988,7 @@ export function useBridgePanel(wallet: BridgeWalletAdapter, options: UseBridgeOp
     try { localStorage.removeItem(BRIDGE_PERSIST_KEY) } catch {}
     setAmount('')
     setReceivedAmount(null)
+    setTotalFee(null)
     setStatus('idle')
     setError(null)
     setSourceTxId(null)
@@ -980,7 +1006,6 @@ export function useBridgePanel(wallet: BridgeWalletAdapter, options: UseBridgeOp
     userHasSelectedChainRef.current = false
     setExtraGasAmount(null)
     setExtraGasAlgo(null)
-
     setLocalSendConfirmations(0)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 

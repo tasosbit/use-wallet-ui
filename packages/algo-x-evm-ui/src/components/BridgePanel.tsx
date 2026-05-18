@@ -198,7 +198,7 @@ function formatFeeDisplay(fee: string | null): string | null {
   const value = parseFloat(fee)
   if (isNaN(value)) return fee
   const [, decimals = ''] = fee.split('.')
-  if (decimals.length <= 6) return fee.replace(/\.?0+$/, '')
+  if (decimals.length <= 6) return fee.includes('.') ? fee.replace(/\.?0+$/, '') : fee
   const formatted = value.toFixed(6).replace(/\.?0+$/, '')
   return value > 0 && formatted === '0' ? '<0.000001' : formatted
 }

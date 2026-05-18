@@ -47,6 +47,7 @@ export function mapBridgeToPanelProps(
     gasFeeLoading: bridge.gasFeeLoading,
     gasFeeUnit: bridge.gasFeeUnit,
     extraGasAlgo: bridge.extraGasAlgo,
+    totalFee: bridge.totalFee,
     evmAddress: bridge.evmAddress,
     algorandAddress: bridge.algorandAddress,
     estimatedTimeMs: bridge.estimatedTimeMs,

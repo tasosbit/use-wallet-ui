@@ -54,6 +54,7 @@ const defaultProps: BridgePanelProps = {
   gasFeeLoading: false,
   gasFeeUnit: null,
   extraGasAlgo: null,
+  totalFee: null,
   evmAddress: EVM_ADDR,
   algorandAddress: ALGO_ADDR,
   estimatedTimeMs: null,

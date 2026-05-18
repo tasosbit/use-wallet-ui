@@ -72,11 +72,14 @@ export interface BridgePanelProps {
   quoteLoading: boolean
 
   // Fee
+  /** Allbridge's relayer fee */
   gasFee: string | null
   gasFeeLoading: boolean
   gasFeeUnit: string | null
   /** Approximate ALGO the user will receive from extra gas (e.g. "~0.123 ALGO") */
   extraGasAlgo: string | null
+  /** Effective fee the user will pay for the complete bridge operation: relayer fee + liquidity provider fee. */
+  totalFee: string | null
 
   // Addresses
   evmAddress: string | null
@@ -189,6 +192,17 @@ function formatTokenBalance(rawBalance: string, decimals: number): string {
   return f ? `${withCommas}.${f}` : withCommas
 }
 
+/** Format a decimal fee string to a human-readable number with up to 6 decimal places */
+function formatFeeDisplay(fee: string | null): string | null {
+  if (fee == null) return null
+  const value = parseFloat(fee)
+  if (isNaN(value)) return fee
+  const [, decimals = ''] = fee.split('.')
+  if (decimals.length <= 6) return fee.includes('.') ? fee.replace(/\.?0+$/, '') : fee
+  const formatted = value.toFixed(6).replace(/\.?0+$/, '')
+  return value > 0 && formatted === '0' ? '<0.000001' : formatted
+}
+
 /** Get a display label for a chain, appending token balance if available */
 function chainOptionLabel(chain: BridgeChainDisplay): string {
   // Find the first token with a non-zero balance to show
@@ -255,6 +269,7 @@ export function BridgePanel({
   gasFeeLoading,
   gasFeeUnit,
   extraGasAlgo,
+  totalFee,
   evmAddress,
   algorandAddress,
   estimatedTimeMs,
@@ -293,6 +308,9 @@ export function BridgePanel({
 
   const parsedAmount = amount ? parseFloat(amount) : 0
   const insufficientFunds = sourceBalanceFloat != null && parsedAmount > 0 && parsedAmount > sourceBalanceFloat
+  const formattedTotalFee = formatFeeDisplay(totalFee)
+  const formattedGasFee = formatFeeDisplay(gasFee)
+  const networkFeeDisplay = formattedTotalFee ?? (formattedGasFee ? `~${formattedGasFee}` : null)
 
   const isProcessing =
     status === 'permit-signing' ||
@@ -509,11 +527,11 @@ export function BridgePanel({
                 <span className="text-[var(--wui-color-text-secondary)]">{extraGasAlgo}</span>
               </div>
             )}
-            {(gasFee || gasFeeLoading) && (
+            {(gasFee || totalFee || gasFeeLoading) && (
               <div className="flex justify-between items-center text-xs">
                 <span className="text-[var(--wui-color-text-secondary)]">Network fee</span>
                 <span className="text-[var(--wui-color-text-secondary)]">
-                  {gasFeeLoading ? <Spinner className="h-2.5 w-2.5 inline" /> : `${gasFee}${gasFeeUnit ? ` ${gasFeeUnit}` : ''}`}
+                  {gasFeeLoading ? <Spinner className="h-2.5 w-2.5 inline" /> : `${networkFeeDisplay}${gasFeeUnit ? ` ${gasFeeUnit}` : ''}`}
                 </span>
               </div>
             )}
